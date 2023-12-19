@@ -12,28 +12,23 @@ const location = "us-central1";
 const vertex_ai = new VertexAI({ project: project, location: location });
 
 const prompt = `
-You are an action detection AI, make sure the following checklist and actions are fulfilled, reply in the following JSON format as text
+You are an action detection AI, make sure the following checklist and action are fulfilled, reply in the following JSON format as text
 
 JSON format:
 {
   checklist: {
-    objects:{
-
-      "objects": true | false
-    },
-    actions:{
-      "actions": true | false
-    }
+    "object": true | false
   },
+  actionFulfilled: true | false
 }
 
-Objects:
+Checklist:
 1. knife
 2. hand
 3. leek
 
-Actions:
-1. cutting a leek
+Action:
+cutting a leek
 `;
 
 const generativeVisionModel = vertex_ai.preview.getGenerativeModel({
@@ -42,17 +37,13 @@ const generativeVisionModel = vertex_ai.preview.getGenerativeModel({
 
 app.use(express.static("public"));
 
-app.get("/", (req, res) => {
-  res.sendFile(__dirname + "/public/index.html");
-});
-
-app.get("/api/data", async (req, res) => {
+app.get("/", async (req, res) => {
   try {
     const result = await multiPartContent();
-    res.json(result);
+    res.send(generateHtml(result));
   } catch (error) {
     console.error("Error:", error);
-    res.status(500).json({ error: "Internal Server Error" });
+    res.status(500).send("Internal Server Error");
   }
 });
 
@@ -73,6 +64,39 @@ async function multiPartContent() {
   const aggregatedResponse = await streamingResp.response;
   return aggregatedResponse.candidates[0].content;
 }
+
+// function generateHtml(result) {
+//   return `
+//   <!DOCTYPE html>
+//   <html lang="en">
+//   <head>
+//       <meta charset="UTF-8">
+//       <meta name="viewport" content="width=device-width, initial-scale=1.0">
+//       <title>Node.js + HTML Result</title>
+//       <style>
+//           body {
+//               font-family: Arial, sans-serif;
+//               text-align: center;
+//               margin: 50px;
+//           }
+//           h1 {
+//               color: #007BFF;
+//           }
+//           pre {
+//               background-color: #f4f4f4;
+//               padding: 10px;
+//               text-align: left;
+//               overflow: auto;
+//           }
+//       </style>
+//   </head>
+//   <body>
+//       <h1>Node.js + HTML Result</h1>
+//       <pre id="result">${JSON.stringify(result, null, 2)}</pre>
+//   </body>
+//   </html>
+//   `;
+// }
 
 app.listen(port, () => {
   console.log(`Server listening at http://localhost:${port}`);
