@@ -7,7 +7,7 @@ import { displayCheckbox } from "./displayCheckbox.js";
 window.addEventListener("load", async () => {
   try {
     // Fetch data from the API endpoint
-    const response = await fetch("/api/checkbox", {
+    const response = await fetch("/checkbox", {
       method: "GET",
       headers: {
         "Content-Type": "application/json",
@@ -39,7 +39,7 @@ window.addEventListener("load", async () => {
       window.submitChecklist = async () => {
         try {
           // Send jsonData to the server using fetch or another method
-          const checkedListResponse = await fetch("/api/checkedList", {
+          const checkedListResponse = await fetch("/checkedList", {
             method: "POST",
             headers: {
               "Content-Type": "application/json",
