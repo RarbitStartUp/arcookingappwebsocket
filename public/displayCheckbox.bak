@@ -1,0 +1,109 @@
+export async function displayCheckbox(result) {
+  const resultContainer = document.getElementById("result-container");
+
+  // Parse the JSON-formatted string
+  const jsonData = JSON.parse(result.parts[0].text);
+
+  // Display the structured content with checkbox icons and input boxes
+  resultContainer.innerHTML = `
+  <div>
+    <h1>Checklist</h1>
+    <div>
+      <h2>Objects</h2>
+      <ul id="objectList">
+        ${Object.keys(jsonData.checklist.objects)
+          .map(
+            (object, index) => `
+              <li>
+                ${index + 1}. ${object}
+                <input type="checkbox" ${
+                  jsonData.checklist.objects[object] ? "checked" : ""
+                }/>
+              </li>
+            `
+          )
+          .join("")}
+        <li>
+          <input type="text" id="newObjectInput" placeholder="Add new object" />
+          <button onclick="addNewObject()">Add</button>
+        </li>
+      </ul>
+    </div>
+    <div>
+      <h2>Actions</h2>
+      <ul id="actionList">
+        ${Object.keys(jsonData.checklist.actions)
+          .map(
+            (action, index) => `
+              <li>
+                ${index + 1}. ${action}
+                <input type="checkbox" ${
+                  jsonData.checklist.actions[action] ? "checked" : ""
+                }/>
+              </li>
+            `
+          )
+          .join("")}
+        <li>
+          <input type="text" id="newActionInput" placeholder="Add new action" />
+          <button onclick="addNewAction()">Add</button>
+        </li>
+      </ul>
+    </div>
+  </div>
+`;
+
+  // Define functions to add new objects and actions
+  window.addNewObject = () => {
+    const newObjectInput = document.getElementById("newObjectInput");
+    const objectList = document.getElementById("objectList");
+
+    const newItem = newObjectInput.value.toLowerCase(); // Convert to lowercase for case-insensitive comparison
+
+    // Check if the item is already in the list
+    if (
+      Object.keys(jsonData.checklist.objects).some(
+        (object) => object.toLowerCase() === newItem
+      )
+    ) {
+      alert("The item is already added!");
+      return;
+    }
+    // Add new object to the list
+    objectList.innerHTML += `
+    <li>
+      ${Object.keys(jsonData.checklist.objects).length + 1}. ${
+      newObjectInput.value
+    }
+      <input type="checkbox"/>
+    </li>
+  `;
+  };
+
+  window.addNewAction = () => {
+    const newActionInput = document.getElementById("newActionInput");
+    const actionList = document.getElementById("actionList");
+
+    const newItem = newActionInput.value.toLowerCase(); // Convert to lowercase for case-insensitive comparison
+
+    // Check if the item is already in the list
+    if (
+      Object.keys(jsonData.checklist.actions).some(
+        (action) => action.toLowerCase() === newItem
+      )
+    ) {
+      alert("The item is already added!");
+      return;
+    }
+
+    // Add new action to the list
+    actionList.innerHTML += `
+    <li>
+      ${Object.keys(jsonData.checklist.actions).length + 1}. ${
+      newActionInput.value
+    }
+      <input type="checkbox"/>
+    </li>
+  `;
+  };
+}

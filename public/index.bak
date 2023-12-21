@@ -3,22 +3,11 @@
   <head>
     <meta charset="UTF-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Node.js + HTML Example</title>
-    <style>
-      body {
-        font-family: Arial, sans-serif;
-        text-align: center;
-        margin: 50px;
-      }
-      h1 {
-        color: #007bff;
-      }
-    </style>
+    <title>Rarbit AR Cooking App</title>
+    <link rel="stylesheet" href="styles.css" />
   </head>
   <body>
-    <h1>Welcome to Node.js + HTML Example</h1>
-    <p>
-      This is a simple example demonstrating how to combine Node.js with HTML.
-    </p>
+    <div id="result-container"></div>
+    <script src="script.js" type="module"></script>
   </body>
 </html>

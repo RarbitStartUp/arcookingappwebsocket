@@ -7,7 +7,7 @@
   "type": "module",
   "license": "ISC",
   "scripts": {
-    "start": "node --experimental-modules server.js"
+    "start": "node server.js"
   },
   "dependencies": {
     "@google-cloud/storage": "^7.7.0",
