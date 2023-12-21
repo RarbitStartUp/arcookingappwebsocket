@@ -1,7 +1,7 @@
 // server.js
 import express from "express";
-import { checkedList } from "./api/checkedList.js";
-import { checkbox } from "./api/checkbox.js";
+import { checkedList } from "./checkedList.js";
+import { checkbox } from "./checkbox.js";
 
 const app = express();
 const port = 3000;
@@ -18,7 +18,7 @@ app.get("/", (req, res) => {
 });
 
 // Step 1. get CHECKBOX FINAL Checklist
-app.get("/api/checkbox", async (req, res) => {
+app.get("/checkbox", async (req, res) => {
   try {
     const result = await checkbox();
     res.json(result);
@@ -29,7 +29,7 @@ app.get("/api/checkbox", async (req, res) => {
 });
 
 // Step 2. post Final CheckList to checkedList API
-app.post("/api/checkedList", express.json(), async (req, res) => {
+app.post("/checkedList", express.json(), async (req, res) => {
   const { jsonData } = req.body; // Assuming the client sends jsonData in the request body
 
   try {
@@ -42,7 +42,7 @@ app.post("/api/checkedList", express.json(), async (req, res) => {
 });
 
 // Step 3. get the checked List ( tick / x ) from checkedList API
-app.get("/api/checkedList", async (req, res) => {
+app.get("/checkedList", async (req, res) => {
   try {
     const result = await checkedList();
     res.json(result);
