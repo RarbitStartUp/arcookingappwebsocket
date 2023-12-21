@@ -1,9 +1,5 @@
 // api.js
-import {
-  VertexAI,
-  HarmCategory,
-  HarmBlockThreshold,
-} from "@google-cloud/vertexai";
+import { VertexAI } from "@google-cloud/vertexai";
 
 const project = "arcookingapp";
 const location = "us-central1";
