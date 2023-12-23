@@ -12,6 +12,8 @@ export async function displayCheckedList(result) {
       // Parse the JSON-formatted string
       const jsonData = JSON.parse(result.parts[0].text);
 
+      console.log("final checklist:", jsonData);
+
       // Display the structured content with tick icons
       resultContainer.innerHTML = `
           <div>

@@ -25,20 +25,43 @@ JSON format :
 }
 `;
 
-export async function checkbox() {
-  const filePart = {
-    file_data: {
-      file_uri: "gs://ar-image/Screenshot 2023-12-18 at 9.29.47 PM.png",
-      mime_type: "image/png",
-    },
-  };
-  const textPart = { text: prompt };
-  const request = {
-    contents: [{ role: "user", parts: [textPart, filePart] }],
-  };
-  const streamingResp = await generativeVisionModel.generateContentStream(
-    request
-  );
-  const aggregatedResponse = await streamingResp.response;
-  return aggregatedResponse.candidates[0].content;
+export async function checkbox(fileUri) {
+  try {
+    const filePart = {
+      file_data: {
+        file_uri: fileUri,
+        mime_type: "video/mp4",
+      },
+    };
+    const textPart = { text: prompt };
+    const request = {
+      contents: [{ role: "user", parts: [textPart, filePart] }],
+    };
+    const streamingResp = await generativeVisionModel.generateContentStream(
+      request
+    );
+    const aggregatedResponse = await streamingResp.response;
+
+    console.log("Aggregated Response:", aggregatedResponse);
+
+    if (
+      !aggregatedResponse.candidates ||
+      aggregatedResponse.candidates.length === 0
+    ) {
+      throw new Error("Invalid or empty candidates in the response.");
+    }
+
+    const content = aggregatedResponse.candidates[0].content;
+
+    console.log("Aggregated Response Content:", content);
+
+    if (!content) {
+      throw new Error("Invalid content in the response.");
+    }
+
+    return content;
+  } catch (error) {
+    console.error("Error in checkbox function:", error);
+    throw error; // rethrow the error to handle it in the calling function
+  }
 }

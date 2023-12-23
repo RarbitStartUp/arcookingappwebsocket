@@ -1,0 +1,13 @@
+{
+  "type": "service_account",
+  "project_id": "arcookingapp",
+  "private_key_id": "02437005e6b046f9b826dba57f76fc5712ea6e53",
+  "private_key": "-----BEGIN PRIVATE KEY-----\nMIIEvgIBADANBgkqhkiG9w0BAQEFAASCBKgwggSkAgEAAoIBAQCr3U552QVLB5dT\n3+V23wuvgzp+QsxlvQMfjTNCO7kQJCUeXUY+/3flbbpHS/fEkdj4uWJ9+tMqP1k/\nSg1jtQzWXZwjmPGrDFp9joiqr0Y/nwgJ7UI7ODwm4cJFlarmxgauYm+exD2bipjF\nsAJkrdVCxNsP2ZhhsHmm1hxCAyVMKbz8zIKbWeYprGM12zAhu01pVIRATnsQqktN\n7g1sPa4gIYujAcGIQwR/JNuxzZbi4YW5LhznDzMJmQA8+xmjQO9rT11RMAI3EP9t\nYGZPsXiacNsgRmY3g885NToAaONk+B9PODvCvag2miqAuEW5C+TJgFjTBPJGPi5I\nC3DFT78RAgMBAAECggEAGmh1iVnfAIHomfiSg5r56odRYsWfLwIwQNYLVSHkfwXx\ndtfMlkaJT5rLikQH4iT/qsGgUDeiizXTtVq1caeIEvJXA83u/cz2pJ9VAavQBrDy\n5RpCAzknXllx5rZSMzFPeoE2oeCJOjq9hyF9+fwPWQ9IPTMUFpgC1q9vWndYRk+i\nViTbgLBcII/n+3Hw/6rV+atq/Ld9fb1w2/7M4eML0DlaWR3RD+1yCjH9+aWT4VZ1\ntk0SWsZbkETTV/eX6LyeaFfiF2Jjkro4ifNhnEWKnP8VRwkfdsPBeG36LxaxVU5o\nA5DwCJr8LZoI90WTLqSqD4wdihPaq8zwuOaPMP0u1wKBgQDbULXJmd1ng4w+O7/o\nSSyJMJgHBzrzA1DjxMDbwblIzUEiW5W9XvYNVDVtAm6UIPM+dQyvVpBadsnJZ7rL\n6MI7e/ScJgRBzOikykSFhtTtf1oYGgBRId85ziRq5xTNnXxM6z32C60e7vMSzAsP\n4E8w4BLqF12kilzOe4T1LfiYiwKBgQDInLU+dJg9FqqPUK+jcQcweJOyOClkm8nP\n5cD5GA549ZVfjUA+gIJjzsSz55O2niDkPgWtI6w+oS4BHBPSuvOqAkCY7YljlsGy\n8Xox6fGiMAxclLAwIKYszbPw3rE/tClQ+EE1dgtIoWgkiBpdDc8EoxXpg7qJieCf\nqpSOOEIeUwKBgQC6LBR1U8EICzp05eGtvNgqiW60oKWg/xKelzokEppHu71r/hTp\n0X/Lps1HgUX/Rs1WGqSu/yvBL49yAjUmvaqMNlhaaUc52EkxAmcSdnewOGhxhzj3\npmpJNr3hZdJaDTMkVJmfkR/f33XGYiGN05tF4SENSNJ8R9wqh95BB0o9qwKBgQDH\nTVCO1NzuS9d0/C8STFddI11wgHU3G8LahSI7FlhCeZFF1ZnOvnNL3v7y0I2iruR0\nfN28ziTwL8b5mUBkahFrhENS6yJES2Dyew7wCcBiZiPR0nJbzgPpnQ84rLUhWcZ2\nR7zY9QZuyNQi/whaDD7wF2nMjW9D9zOuzJQ72s5tOwKBgCcNfLK1XSDibzCvIi2d\neE/S8177c03EkO5aFvvkOjhMQLRp7g8yxwgT1oniC4+FcoiQgcPgvyqcAzGidGMB\nTDwMTwnOggFuNcOJmT1FQKu8aQ1pEHp9hlgWhV5KB1SqeBa5SwMY5GyT4G2PPhiO\nVHgv3G98Cx3OQAQuoFRpk8sW\n-----END PRIVATE KEY-----\n",
+  "client_email": "arcookingapp@arcookingapp.iam.gserviceaccount.com",
+  "client_id": "108333011269530533760",
+  "auth_uri": "https://accounts.google.com/o/oauth2/auth",
+  "token_uri": "https://oauth2.googleapis.com/token",
+  "auth_provider_x509_cert_url": "https://www.googleapis.com/oauth2/v1/certs",
+  "client_x509_cert_url": "https://www.googleapis.com/robot/v1/metadata/x509/arcookingapp%40arcookingapp.iam.gserviceaccount.com",
+  "universe_domain": "googleapis.com"
+}

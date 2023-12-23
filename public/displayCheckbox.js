@@ -3,45 +3,46 @@
 export async function displayCheckbox(result) {
   const resultContainer = document.getElementById("result-container");
 
+  // Log the raw API response
+  console.log("API Response:", result);
+
+  // // Check if the result is defined
+  // if (!result || !result.parts || result.parts.length === 0) {
+  //   console.error("Error: Invalid API response");
+  //   alert("Error: Invalid API response. Please try again.");
+  //   return;
+  // }
+
+  function safeJsonParse(fixedJsonString) {
+    try {
+      return JSON.parse(fixedJsonString);
+    } catch (error) {
+      console.error("Error parsing JSON:", error);
+      throw new Error("Invalid JSON format");
+    }
+  }
+  console.log("text :", result.result.parts[0].text);
+
+  // Parse the JSON-formatted string using a safer method
+  const jsonString = result.result.parts[0].text;
+  const jsonData = safeJsonParse(jsonString);
+
+  // Check if the expected structure exists
+  if (
+    !jsonData ||
+    !jsonData.checklist ||
+    !jsonData.checklist.objects ||
+    !jsonData.checklist.actions
+  ) {
+    console.error("Error: Invalid JSON structure");
+    alert("Error: Invalid JSON structure. Please try again.");
+    return;
+  }
+
+  // Log the parsed JSON data
+  console.log("Parsed JSON Data:", jsonData);
+
   try {
-    // Log the raw API response
-    console.log("API Response:", result);
-
-    // Check if the result is defined
-    if (!result || !result.parts || result.parts.length === 0) {
-      console.error("Error: Invalid API response");
-      alert("Error: Invalid API response. Please try again.");
-      return;
-    }
-
-    function safeJsonParse(fixedJsonString) {
-      try {
-        return JSON.parse(fixedJsonString);
-      } catch (error) {
-        console.error("Error parsing JSON:", error);
-        throw new Error("Invalid JSON format");
-      }
-    }
-
-    // Parse the JSON-formatted string using a safer method
-    const jsonString = result.parts[0].text;
-    const jsonData = safeJsonParse(jsonString);
-
-    // Check if the expected structure exists
-    if (
-      !jsonData ||
-      !jsonData.checklist ||
-      !jsonData.checklist.objects ||
-      !jsonData.checklist.actions
-    ) {
-      console.error("Error: Invalid JSON structure");
-      alert("Error: Invalid JSON structure. Please try again.");
-      return;
-    }
-
-    // Log the parsed JSON data
-    console.log("Parsed JSON Data:", jsonData);
-
     // Display the structured content with checkbox icons and input boxes
     resultContainer.innerHTML = `
       <div>
@@ -92,6 +93,13 @@ export async function displayCheckbox(result) {
         </div>
       </div>
     `;
+
+    // Create and append the "Submit Checklist" button
+    const submitButton = document.createElement("button");
+    submitButton.id = "submitBtn";
+    submitButton.textContent = "Submit Checklist";
+    submitButton.onclick = submitChecklist;
+    resultContainer.appendChild(submitButton);
 
     // Define functions to add new items
     window.addNewItem = (listId, inputId) => {

@@ -1,26 +1,40 @@
 // server.js
 import express from "express";
-import { checkedList } from "./checkedList.js";
-import { checkbox } from "./checkbox.js";
+import { fileURLToPath } from "url"; // Import fileURLToPath function
+import { checkedList } from "./api/checkedList.js";
+import { checkbox } from "./api/checkbox.js";
+import { uploadVideo } from "./api/uploadVideo.js";
+
+import path from "path";
 
 const app = express();
 const port = 3000;
 
+// Get the directory path using import.meta.url
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
 app.use(
-  express.static("public", {
+  express.static(path.join(__dirname, "public"), {
+    // Use path.join to join __dirname and "public"
     extensions: ["html", "js"],
     type: "application/javascript",
   })
 );
 
 app.get("/", (req, res) => {
-  res.sendFile(__dirname + "/public/index.html");
+  res.sendFile(path.join(__dirname, "public", "index.html")); // Use path.join to join __dirname, "public", and "index.html"
 });
 
+// Step 0. Handle video upload
+// Handle video upload
+app.post("/api/uploadVideo", express.json(), uploadVideo);
+
 // Step 1. get CHECKBOX FINAL Checklist
-app.get("/checkbox", async (req, res) => {
+app.get("/api/uploadVideo", async (req, res) => {
   try {
-    const result = await checkbox();
+    const result = await uploadVideo();
+    console.error("Server Step 1 :", result);
     res.json(result);
   } catch (error) {
     console.error("Error:", error);
@@ -28,23 +42,13 @@ app.get("/checkbox", async (req, res) => {
   }
 });
 
-// Step 2. post Final CheckList to checkedList API
-app.post("/checkedList", express.json(), async (req, res) => {
+// Step 2. post Final CheckList to checkedList API and return result
+app.post("/api/checkedList", express.json(), async (req, res) => {
   const { jsonData } = req.body; // Assuming the client sends jsonData in the request body
 
   try {
     const result = await checkedList(jsonData);
-    res.json(result);
-  } catch (error) {
-    console.error("Error:", error);
-    res.status(500).json({ error: "Internal Server Error" });
-  }
-});
-
-// Step 3. get the checked List ( tick / x ) from checkedList API
-app.get("/checkedList", async (req, res) => {
-  try {
-    const result = await checkedList();
+    console.error("Server Step 2 :", result);
     res.json(result);
   } catch (error) {
     console.error("Error:", error);
