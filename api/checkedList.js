@@ -43,8 +43,11 @@ export async function checkedList(jsonData) {
     // Make the API request
     const filePart = {
       file_data: {
-        file_uri: "gs://ar-image/Screenshot 2023-12-18 at 9.29.47 PM.png",
-        mime_type: "image/png",
+        file_uri:
+          // "gs://ar-image/Screenshot 2023-12-18 at 9.29.47 PM.png",
+          "gs://ar-image/How to Clean Leeks for Beginners Food Network.mp4",
+        // mime_type: "image/png",
+        mime_type: "video/mp4",
       },
     };
     const textPart = { text: prompt };
