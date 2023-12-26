@@ -2,13 +2,12 @@
 import express from "express";
 import { fileURLToPath } from "url"; // Import fileURLToPath function
 import { checkedList } from "./api/checkedList.js";
-import { checkbox } from "./api/checkbox.js";
 import { uploadVideo } from "./api/uploadVideo.js";
 
 import path from "path";
 
 const app = express();
-const port = 3000;
+const port = process.env.PORT || 3000;
 
 // Get the directory path using import.meta.url
 const __filename = fileURLToPath(import.meta.url);
