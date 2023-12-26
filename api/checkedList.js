@@ -13,18 +13,19 @@ const generativeVisionModel = vertex_ai.preview.getGenerativeModel({
 export async function checkedList(jsonData) {
   try {
     const preview = JSON.stringify(jsonData);
-    console.log(preview);
+    console.log("API updatedJsonData:", preview);
     // Construct the prompt using jsonData
     const prompt = `
-      You are an action detection AI, detect the objects and actions in the video which are marked true in the following user's JSON checklist, reply in the following JSON format as text
+      You are an action detection AI, 
       
+      check if the objects and actions in the user's JSON checklist are detected in the video link in file_uri,
+
       User's JSON CheckList :
-      ( only check the objects and actions marked "true" )
+      ( only check the objects and actions marked "true", you don't need to check the objects and actions marked false )
       ${JSON.stringify(jsonData)}
 
-      compare the objects and actions detected in the video link in file_uri
-
       and return the new checklist below JSON format :
+
       {
         checklist: {
           objects:{

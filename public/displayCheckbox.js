@@ -1,30 +1,28 @@
 // displayCheckbox.js
+import { displayCheckedList } from "./displayCheckedList.js";
+// Define an array to store added items
+let addedItems = [];
 
-export async function displayCheckbox(result) {
+export async function displayCheckbox(apiResponse, onAddItem) {
   const resultContainer = document.getElementById("result-container");
 
-  // Log the raw API response
-  console.log("API Response:", result);
+  // Log the received API response
+  console.log("Received API Response:", apiResponse);
 
-  // // Check if the result is defined
-  // if (!result || !result.parts || result.parts.length === 0) {
-  //   console.error("Error: Invalid API response");
-  //   alert("Error: Invalid API response. Please try again.");
-  //   return;
-  // }
-
-  function safeJsonParse(fixedJsonString) {
+  // A helper function for safely parsing JSON
+  function safeJsonParse(jsonString) {
     try {
-      return JSON.parse(fixedJsonString);
+      return JSON.parse(jsonString);
     } catch (error) {
       console.error("Error parsing JSON:", error);
       throw new Error("Invalid JSON format");
     }
   }
-  console.log("text :", result.result.parts[0].text);
 
-  // Parse the JSON-formatted string using a safer method
-  const jsonString = result.result.parts[0].text;
+  // Extract the JSON-formatted string from the API response
+  const jsonString = apiResponse.result.parts[0].text;
+
+  // Parse the JSON-formatted string
   const jsonData = safeJsonParse(jsonString);
 
   // Check if the expected structure exists
@@ -92,43 +90,45 @@ export async function displayCheckbox(result) {
           </ul>
         </div>
       </div>
+      <button id="submitBtn">Submit Checklist</button>
     `;
 
     // Create and append the "Submit Checklist" button
-    const submitButton = document.createElement("button");
-    submitButton.id = "submitBtn";
-    submitButton.textContent = "Submit Checklist";
-    submitButton.onclick = submitChecklist;
-    resultContainer.appendChild(submitButton);
+    // const submitButton = document.createElement("button");
+    // submitButton.id = "submitBtn";
+    // submitButton.textContent = "Submit Checklist";
+    // submitButton.onclick = window.submitChecklist;
+    // resultContainer.appendChild(submitButton);
 
     // Define functions to add new items
-    window.addNewItem = (listId, inputId) => {
-      const newItemInput = document.getElementById(inputId);
-      const itemList = document.getElementById(listId);
+    window.addNewItem = async (listId, inputId) => {
+      try {
+        const newItemInput = document.getElementById(inputId);
+        const itemList = document.getElementById(listId);
 
-      const newItem = newItemInput.value.toLowerCase(); // Convert to lowercase for case-insensitive comparison
+        const newItem = newItemInput.value.toLowerCase(); // Convert to lowercase for case-insensitive comparison
 
-      // Check if the item is already in the list
-      if (
-        Object.keys(
-          jsonData.checklist[listId === "objectList" ? "objects" : "actions"]
-        ).some((item) => item.toLowerCase() === newItem)
-      ) {
-        alert("The item is already added!");
-        return;
-      }
+        // Check if the item is already in the list
+        if (
+          Object.keys(
+            jsonData.checklist[listId === "objectList" ? "objects" : "actions"]
+          ).some((item) => item.toLowerCase() === newItem)
+        ) {
+          alert("The item is already added!");
+          return;
+        }
 
-      // Add new item to the list
-      const newItemIndex =
-        Object.keys(
-          jsonData.checklist[listId === "objectList" ? "objects" : "actions"]
-        ).length + 1;
+        // Add new item to the list
+        const newItemIndex =
+          Object.keys(
+            jsonData.checklist[listId === "objectList" ? "objects" : "actions"]
+          ).length + 1;
 
-      itemList.innerHTML += `
+        itemList.innerHTML += `
         <li>
           ${newItemIndex}. 
           <span>${newItemInput.value}</span>
-          <input type="checkbox" ${
+          <input type="checkbox" checked ${
             jsonData.checklist[listId === "objectList" ? "objects" : "actions"][
               newItem
             ]
@@ -138,18 +138,68 @@ export async function displayCheckbox(result) {
         </li>
       `;
 
-      // Add new item to jsonData
-      jsonData.checklist[listId === "objectList" ? "objects" : "actions"][
-        newItem
-      ] = true;
+        // Add new item to jsonData
+        jsonData.checklist[listId === "objectList" ? "objects" : "actions"][
+          newItem
+        ] = true;
+
+        // Store the added item
+        addedItems.push(newItem);
+
+        // Log the jsonData before submitting
+        console.log("before submit:", jsonData);
+
+        // Call the onAddItem callback with the added items
+        if (onAddItem) {
+          onAddItem(addedItems);
+        }
+
+        return jsonData;
+      } catch (error) {
+        console.error("Error adding new items:", error);
+        alert("Error adding new items. Please try again.");
+      }
     };
 
-    // Log the jsonData before submitting
-    console.log("before submit:", jsonData);
+    // Create and append the "Submit Checklist" button
+    const submitButton = document.getElementById("submitBtn");
+    submitButton.onclick = async () => {
+      try {
+        // Send jsonData to the server using fetch or another method
+        const checkedListResponse = await fetch("/api/checkedList", {
+          method: "POST",
+          headers: {
+            "Content-Type": "application/json",
+          },
+          body: JSON.stringify({ jsonData }),
+        });
+
+        if (!checkedListResponse.ok) {
+          throw new Error(`HTTP error! Status: ${checkedListResponse.status}`);
+        }
+
+        const checkedListResult = await checkedListResponse.json();
+
+        // Handle the checkedList result if needed
+        console.log("checkedListResult:", checkedListResult);
+
+        // Display the checked list in the result container
+        displayCheckedList(checkedListResult);
+
+        // Remove the submit button if it's still in the DOM
+        if (submitButton.parentNode) {
+          submitButton.parentNode.removeChild(submitButton);
+        }
+      } catch (error) {
+        console.error("Error updating checklist:", error);
+        document.getElementById("result-container").textContent =
+          "Error updating checklist. Please try again.";
+      }
+    };
 
     return jsonData;
   } catch (error) {
-    console.error("Error displaying checkbox:", error);
-    alert("Error displaying checkbox. Please try again.");
+    console.error("Error displaying Checkbox:", error);
+    alert("Error displaying Checkbox. Please try again.");
   }
 }
