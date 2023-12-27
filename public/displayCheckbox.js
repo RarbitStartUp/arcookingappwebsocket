@@ -93,13 +93,6 @@ export async function displayCheckbox(apiResponse, onAddItem) {
       <button id="submitBtn">Submit Checklist</button>
     `;
 
-    // Create and append the "Submit Checklist" button
-    // const submitButton = document.createElement("button");
-    // submitButton.id = "submitBtn";
-    // submitButton.textContent = "Submit Checklist";
-    // submitButton.onclick = window.submitChecklist;
-    // resultContainer.appendChild(submitButton);
-
     // Define functions to add new items
     window.addNewItem = async (listId, inputId) => {
       try {
