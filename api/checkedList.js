@@ -1,4 +1,4 @@
-// api.js
+// checkedList.js
 import { VertexAI } from "@google-cloud/vertexai";
 
 const project = "arcookingapp";
@@ -12,20 +12,14 @@ const generativeVisionModel = vertex_ai.preview.getGenerativeModel({
 // Export the multiPartContent function
 export async function checkedList(jsonData) {
   try {
-    const preview = JSON.stringify(jsonData);
-    console.log("API updatedJsonData:", preview);
-    // Construct the prompt using jsonData
     const prompt = `
       You are an action detection AI, 
-      
-      check if the objects and actions in the user's JSON checklist are detected in the video link in file_uri,
-
+      check if the objects and actions in the user's JSON checklist are detected in the live stream from the camera,
       User's JSON CheckList :
       ( only check the objects and actions marked "true", you don't need to check the objects and actions marked false )
       ${JSON.stringify(jsonData)}
 
       and return the new checklist below JSON format :
-
       {
         checklist: {
           objects:{
@@ -36,24 +30,23 @@ export async function checkedList(jsonData) {
           }
         },
       }
-     
-      
     `;
 
-    // Make the API request
+    const frames = await captureFrames(); // Function to capture frames from webcam
+
+    // Send frames to Vertex AI for detection
     const filePart = {
       file_data: {
-        file_uri:
-          // "gs://ar-image/Screenshot 2023-12-18 at 9.29.47 PM.png",
-          "gs://ar-image/How to Clean Leeks for Beginners Food Network.mp4",
-        // mime_type: "image/png",
-        mime_type: "video/mp4",
+        file_content: frames, // Send frames as the content
+        mime_type: "image/jpeg", // Adjust the mime type as needed
       },
     };
+
     const textPart = { text: prompt };
     const request = {
       contents: [{ role: "user", parts: [textPart, filePart] }],
     };
+
     const streamingResp = await generativeVisionModel.generateContentStream(
       request
     );
@@ -65,4 +58,42 @@ export async function checkedList(jsonData) {
     console.error("Error:", error);
     return "Error generating content";
   }
+}
+
+// Function to capture frames from webcam using TensorFlow.js
+async function captureFrames() {
+  const video = document.createElement("video");
+  document.body.appendChild(video);
+
+  const stream = await navigator.mediaDevices.getUserMedia({ video: true });
+  video.srcObject = stream;
+
+  return new Promise((resolve) => {
+    video.onloadedmetadata = () => {
+      const frames = [];
+      const canvas = document.createElement("canvas");
+      const context = canvas.getContext("2d");
+      canvas.width = video.videoWidth;
+      canvas.height = video.videoHeight;
+
+      const interval = setInterval(() => {
+        context.drawImage(video, 0, 0, video.videoWidth, video.videoHeight);
+        const imageData = context.getImageData(
+          0,
+          0,
+          video.videoWidth,
+          video.videoHeight
+        );
+        frames.push(imageData);
+
+        // Limit the number of frames to send (adjust as needed)
+        if (frames.length === 10) {
+          clearInterval(interval);
+          video.srcObject.getTracks().forEach((track) => track.stop());
+          document.body.removeChild(video);
+          resolve(frames);
+        }
+      }, 100); // Adjust the interval as needed
+    };
+  });
 }
