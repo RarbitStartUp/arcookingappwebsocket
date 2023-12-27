@@ -7,7 +7,7 @@ import { uploadVideo } from "./api/uploadVideo.js";
 import path from "path";
 
 const app = express();
-const port = process.env.PORT || 3000;
+const port = 3000;
 
 // Get the directory path using import.meta.url
 const __filename = fileURLToPath(import.meta.url);
