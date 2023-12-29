@@ -1,5 +1,8 @@
 // displayCheckbox.js
 import { displayCheckedList } from "./displayCheckedList.js";
+import { cameraFunctions } from "./camera.js";
+import { WebSocket } from "ws";
+
 // Define an array to store added items
 let addedItems = [];
 
@@ -154,30 +157,125 @@ export async function displayCheckbox(apiResponse, onAddItem) {
       }
     };
 
+    // Function to handle WebSocket connection
+    const handleWebSocket = async () => {
+      // Fetch Ngrok status to get the assigned subdomain
+      const getNgrokSubdomain = async () => {
+        const response = await fetch("http://localhost:4040/api/tunnels");
+        const data = await response.json();
+        const tunnelUrl = data.tunnels[0].public_url;
+        const subdomain = tunnelUrl.replace("https://", "").split(".")[0];
+        return subdomain;
+      };
+      // const socket = new WebSocket("ws://localhost:3000");
+      // const socket = new WebSocket("wss://08dd-156-146-51-130.ngrok-free.app");
+      // Update WebSocket URL dynamically
+      const subdomain = await getNgrokSubdomain();
+      const socket = new WebSocket(`wss://${subdomain}.ngrok.io`);
+
+      let isCapturing = false; // Flag to track capturing state
+
+      // Handle WebSocket connection established
+      socket.addEventListener("open", (event) => {
+        console.log("WebSocket connection opened");
+
+        // Start capturing frames
+        const { captureFrames, startCaptureFrames } = cameraFunctions;
+
+        startCaptureFrames();
+
+        // Handle frames and send them to the WebSocket service
+        const sendFramesToWebSocket = async () => {
+          const frames = await captureFrames(100); // Capture frames every 100 milliseconds
+          socket.send(JSON.stringify(frames)); // Send frames as JSON to the WebSocket service
+          sendFramesToWebSocket(); // Continue sending frames continuously
+        };
+
+        sendFramesToWebSocket();
+      });
+
+      // Handle WebSocket messages (detection results)
+      socket.addEventListener("message", (event) => {
+        if (isCapturing) {
+          try {
+            const detectionResults = JSON.parse(event.data);
+
+            // Display the detection results in the UI
+            displayCheckedList(detectionResults);
+          } catch (error) {
+            console.error("Error parsing WebSocket message:", error);
+            // Handle the error, e.g., display an error message to the user
+          }
+        }
+      });
+
+      // Handle WebSocket connection closed
+      socket.addEventListener("close", (event) => {
+        console.log("WebSocket connection closed");
+      });
+    };
+
+    // Call the function to handle WebSocket connection
+    handleWebSocket();
+
     // Create and append the "Submit Checklist" button
     const submitButton = document.getElementById("submitBtn");
     submitButton.onclick = async () => {
       try {
-        // Send jsonData to the server using fetch or another method
-        const checkedListResponse = await fetch("/api/checkedList", {
-          method: "POST",
-          headers: {
-            "Content-Type": "application/json",
-          },
-          body: JSON.stringify({ jsonData }),
-        });
+        // Define functions to add new items
+        const {
+          captureFrames,
+          displayFrames,
+          startCaptureFrames,
+          stopCaptureFrames,
+        } = cameraFunctions;
 
-        if (!checkedListResponse.ok) {
-          throw new Error(`HTTP error! Status: ${checkedListResponse.status}`);
-        }
+        const frames = await captureFrames();
 
-        const checkedListResult = await checkedListResponse.json();
+        captureFrames().then((frames) => displayFrames(frames));
 
-        // Handle the checkedList result if needed
-        console.log("checkedListResult:", checkedListResult);
+        // Add a "Start Capturing" button
+        const startCaptureButton = document.createElement("button");
+        startCaptureButton.textContent = "Start Capturing Frames";
+        startCaptureButton.onclick = async () => {
+          // Call startCaptureFrames to start capturing frames
+          startCaptureFrames();
+          isCapturing = true;
+        };
 
-        // Display the checked list in the result container
-        displayCheckedList(checkedListResult);
+        resultContainer.appendChild(startCaptureButton);
+
+        // Add a "Stop Capturing" button
+        const stopCaptureButton = document.createElement("button");
+        stopCaptureButton.textContent = "Stop Capturing Frames";
+        stopCaptureButton.onclick = async () => {
+          // Call stopCaptureFrames to stop capturing frames
+          await stopCaptureFrames();
+          isCapturing = false;
+        };
+
+        resultContainer.appendChild(stopCaptureButton);
+
+        // // Send jsonData to the server using fetch or another method
+        // const checkedListResponse = await fetch("/api/checkedList", {
+        //   method: "POST",
+        //   headers: {
+        //     "Content-Type": "application/json",
+        //   },
+        //   body: JSON.stringify({ jsonData, frames }),
+        // });
+
+        // if (!checkedListResponse.ok) {
+        //   throw new Error(`HTTP error! Status: ${checkedListResponse.status}`);
+        // }
+
+        // const checkedListResult = await checkedListResponse.json();
+
+        // // Handle the checkedList result if needed
+        // console.log("checkedListResult:", checkedListResult);
+
+        // // Display the checked list in the result container
+        // displayCheckedList(checkedListResult);
 
         // Remove the submit button if it's still in the DOM
         if (submitButton.parentNode) {

@@ -1,5 +1,6 @@
 // checkedList.js
 import { VertexAI } from "@google-cloud/vertexai";
+import { WebSocket } from "ws";
 
 const project = "arcookingapp";
 const location = "us-central1";
@@ -9,8 +10,38 @@ const generativeVisionModel = vertex_ai.preview.getGenerativeModel({
   model: "gemini-pro-vision",
 });
 
+// WebSocket functionality for receiving live stream frames
+const wss = new WebSocket.Server({ noServer: true });
+
+let frameCallback;
+
+wss.on("connection", (ws) => {
+  console.log("WebSocket connection opened");
+
+  // Set up frame callback to receive frames from WebSocket
+  frameCallback = (frames) => {
+    // Process frames as needed (e.g., send to Vertex AI for detection)
+    processFrames(frames);
+  };
+
+  // Handle WebSocket connection closed
+  ws.on("close", () => {
+    console.log("WebSocket connection closed");
+
+    // Clean up frame callback
+    frameCallback = null;
+  });
+});
+
+// Function to process frames (replace this with your frame processing logic)
+function processFrames(frames) {
+  // Convert frames to base64
+  const base64Frames = frames.map((frame) =>
+    arrayBufferToBase64(frame.data.buffer)
+  );
+}
 // Export the multiPartContent function
-export async function checkedList(jsonData) {
+export async function checkedList(jsonData, frames) {
   try {
     const prompt = `
       You are an action detection AI, 
@@ -32,12 +63,15 @@ export async function checkedList(jsonData) {
       }
     `;
 
-    const frames = await captureFrames(); // Function to capture frames from webcam
+    // // Convert frames to base64
+    // const base64Frames = frames.map((frame) =>
+    //   arrayBufferToBase64(frame.data.buffer)
+    // );
 
-    // Send frames to Vertex AI for detection
+    // Send base64-encoded frames to Vertex AI for detection
     const filePart = {
       file_data: {
-        file_content: frames, // Send frames as the content
+        file_content: base64Frames, // Send frames as base64-encoded content
         mime_type: "image/jpeg", // Adjust the mime type as needed
       },
     };
@@ -55,45 +89,26 @@ export async function checkedList(jsonData) {
     // Return the generated content
     return aggregatedResponse.candidates[0].content;
   } catch (error) {
-    console.error("Error:", error);
+    console.error("Error in checkedList function:", error);
+
+    if (error.response && error.response.data) {
+      console.log("Error response data:", error.response.data);
+    } else {
+      console.log("Error details:", error.message);
+    }
     return "Error generating content";
   }
 }
 
-// Function to capture frames from webcam using TensorFlow.js
-async function captureFrames() {
-  const video = document.createElement("video");
-  document.body.appendChild(video);
+// Export the WebSocket server for integration
+export { wss };
 
-  const stream = await navigator.mediaDevices.getUserMedia({ video: true });
-  video.srcObject = stream;
-
-  return new Promise((resolve) => {
-    video.onloadedmetadata = () => {
-      const frames = [];
-      const canvas = document.createElement("canvas");
-      const context = canvas.getContext("2d");
-      canvas.width = video.videoWidth;
-      canvas.height = video.videoHeight;
-
-      const interval = setInterval(() => {
-        context.drawImage(video, 0, 0, video.videoWidth, video.videoHeight);
-        const imageData = context.getImageData(
-          0,
-          0,
-          video.videoWidth,
-          video.videoHeight
-        );
-        frames.push(imageData);
-
-        // Limit the number of frames to send (adjust as needed)
-        if (frames.length === 10) {
-          clearInterval(interval);
-          video.srcObject.getTracks().forEach((track) => track.stop());
-          document.body.removeChild(video);
-          resolve(frames);
-        }
-      }, 100); // Adjust the interval as needed
-    };
-  });
+// Function to convert array buffer to base64
+function arrayBufferToBase64(buffer) {
+  let binary = "";
+  const bytes = new Uint8Array(buffer);
+  for (let i = 0; i < bytes.byteLength; i++) {
+    binary += String.fromCharCode(bytes[i]);
+  }
+  return btoa(binary);
 }
