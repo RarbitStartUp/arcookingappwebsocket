@@ -41,7 +41,7 @@ import { checkedListAI } from "./api/checkedListAI.js";
 
 const app = express();
 const server = http.createServer(app);
-const port = process.env.PORT || 443;
+const port = process.env.PORT || 3000;
 
 // const getNgrokSubdomain = async () => {
 //   const response = await fetch("http://localhost:4040/api/tunnels");
