@@ -169,16 +169,6 @@ app.use((req, res, next) => {
   next();
 });
 
-app.get("/displayCheckbox", (req, res) => {
-  res.type("application/javascript");
-  res.sendFile(path.join(__dirname, "/public/displayCheckbox.js"));
-});
-
-app.get("/frameCallback", (req, res) => {
-  res.type("application/javascript");
-  res.sendFile(path.join(__dirname, "/public/frameCallback.js"));
-});
-
 // Enable CORS for all routes
 app.use((req, res, next) => {
   res.header("Access-Control-Allow-Origin", "*"); // Allow requests from any origin
