@@ -1,0 +1,13 @@
+// testFetch.js
+const fetchNgrokSubdomain = async () => {
+  try {
+    const response = await fetch("http://localhost:4040/api/tunnels");
+    const data = await response.json();
+    console.log("Ngrok subdomain data:", data);
+  } catch (error) {
+    console.error("Error fetching Ngrok subdomain:", error);
+  }
+};
+
+// Call the function to test
+fetchNgrokSubdomain();

@@ -1,0 +1,186 @@
+// server.js
+import express from "express";
+import http from "http";
+import { WebSocketServer } from "ws"; // Import the WebSocket.Server
+import cors from "cors"; // Import the cors middleware
+import { fileURLToPath } from "url"; // Import fileURLToPath function
+import { uploadVideo } from "./api/uploadVideo.js";
+
+import path from "path";
+
+const app = express();
+const server = http.createServer(app);
+// const wss = new WebSocketServer({ noServer: true }); // Create WebSocketServer instance
+const port = 3000;
+
+const wss = new WebSocketServer({ server }); // Use the HTTP server directly
+
+// Get the directory path using import.meta.url
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+// Use cors middleware
+// app.use(
+//   cors({
+//     origin: async (origin, callback) => {
+//       try {
+//         // Fetch Ngrok status to get the assigned subdomain
+//         const ngrokSubdomain = await getNgrokSubdomain();
+
+//         // Define allowed origins
+//         const allowedOrigins = [
+//           "http://0.0.0.0:3000",
+//           "http://localhost:3000",
+//           `https://${ngrokSubdomain}.ngrok-free.app`,
+//         ];
+
+//         // Check if the request is coming from an allowed origin
+//         const isAllowedOrigin = origin && allowedOrigins.includes(origin);
+
+//         // Allow requests from the allowed origins
+//         if (isAllowedOrigin) {
+//           callback(null, true);
+//         } else {
+//           // Deny requests from other origins
+//           callback(new Error("Not allowed by CORS"));
+//         }
+//       } catch (error) {
+//         console.error("Error getting Ngrok subdomain:", error);
+//         callback(new Error("Internal Server Error"));
+//       }
+//     },
+//     optionsSuccessStatus: 200, // Some legacy browsers (IE11, various SmartTVs) choke on 204
+//   })
+// );
+
+// app.options("*", cors());
+
+// Use cors middleware with specific origin
+app.use(
+  cors({
+    origin: [
+      "http://0.0.0.0:3000",
+      "http://localhost:3000",
+      "https://c328-156-146-51-130.ngrok-free.app/",
+      "http://127.0.0.1:8080",
+    ], // Replace with your actual client origin
+    optionsSuccessStatus: 200, // Some legacy browsers (IE11, various SmartTVs) choke on 204
+  })
+);
+
+wss.on("connection", (ws) => {
+  console.log("WebSocket connection established");
+
+  // Handle WebSocket closure
+  ws.on("close", (code, reason) => {
+    console.log(`WebSocket closed with code: ${code}, reason: ${reason}`);
+    // Additional cleanup or logic if needed
+  });
+
+  // WebSocket logic here
+  ws.on("message", (message) => {
+    console.log(`Received message: ${message}`);
+    // Handle the received message
+  });
+
+  // Send a welcome message to the connected client
+  ws.send("Welcome to the WebSocket server!");
+});
+
+server.on("upgrade", (request, socket, head) => {
+  const allowedOrigins = [
+    "http://0.0.0.0:3000",
+    "http://localhost:3000",
+    "https://c328-156-146-51-130.ngrok-free.app/",
+    "http://127.0.0.1:8080",
+  ];
+  const origin = request.headers.origin;
+
+  if (allowedOrigins.includes(origin)) {
+    wss.handleUpgrade(request, socket, head, (ws) => {
+      wss.emit("connection", ws, request);
+    });
+  } else {
+    socket.destroy();
+    console.error("WebSocket connection upgrade failed: Origin not allowed");
+  }
+});
+
+app.use(
+  express.static(path.join(__dirname, "public"), {
+    // Use path.join to join __dirname and "public"
+    extensions: ["html", "js"],
+    type: "application/javascript",
+  })
+);
+
+app.get("/", (req, res) => {
+  res.sendFile(path.join(__dirname, "public", "index.html")); // Use path.join to join __dirname, "public", and "index.html"
+});
+
+// Step 0. Handle video upload
+// Handle video upload
+app.post("/api/uploadVideo", express.json(), uploadVideo);
+
+// Use the WebSocket service with the HTTP server
+server.on("upgrade", (request, socket, head) => {
+  wss.handleUpgrade(request, socket, head, (ws) => {
+    console.log("WebSocket connection established");
+    wss.emit("connection", ws, request);
+  });
+});
+
+// Step 1. get CHECKBOX FINAL Checklist
+app.get("/api/uploadVideo", async (req, res) => {
+  try {
+    const result = await uploadVideo();
+    console.error("Server Step 1 :", result);
+    res.json(result);
+  } catch (error) {
+    console.error("Error:", error);
+    res.status(500).json({ error: "Internal Server Error" });
+  }
+});
+
+// Step 2. post Final CheckList to checkedList API and return result
+// app.post("/api/checkedList", express.json(), async (req, res) => {
+//   const { jsonData, frames } = req.body; // Assuming the client sends jsonData in the request body
+
+//   try {
+//     const result = await checkedList(jsonData, frames);
+//     console.error("Server Step 2 :", result);
+//     res.json(result);
+//   } catch (error) {
+//     console.error("Error:", error);
+//     res.status(500).json({ error: "Internal Server Error" });
+//   }
+// });
+
+app.listen(port, "0.0.0.0", () => {
+  // console.log(`Server listening at http://localhost:${port}`);
+  // console.log(`Server is running on port ${port}`);
+  console.log("Server listening at http://0.0.0.0:3000");
+
+  if (server && server.address()) {
+    console.log(
+      `WebSocket server listening on: ${server.address().address}:${
+        server.address().port
+      }`
+    );
+  } else {
+    console.error("WebSocket server is not available.");
+  }
+});
+
+// server.listen(port, () => {
+//   console.log(`WebSocket server started on port ${port}`);
+// });
+
+// Function to get Ngrok subdomain
+// const getNgrokSubdomain = async () => {
+//   const response = await fetch("http://localhost:4040/api/tunnels");
+//   const data = await response.json();
+//   const tunnelUrl = data.tunnels[0].public_url;
+//   const subdomain = tunnelUrl.replace("https://", "").split(".")[0];
+//   return subdomain;
+// };

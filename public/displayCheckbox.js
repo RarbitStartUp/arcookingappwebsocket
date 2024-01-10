@@ -1,13 +1,37 @@
 // displayCheckbox.js
-import { displayCheckedList } from "./displayCheckedList.js";
 import { cameraFunctions } from "./camera.js";
-import { WebSocket } from "ws";
+import { displayCheckedList } from "./displayCheckedList.js";
 
 // Define an array to store added items
 let addedItems = [];
+let onRemoveItem; // Declare onRemoveItem at the module level
+// Declare isCapturing outside any function or block
+let isCapturing = false;
+
+// Create a single WebSocket instance
+const socket = new WebSocket("wss://9324-156-146-51-130.ngrok-free.app");
+
+socket.addEventListener("error", (error) => {
+  console.error("WebSocket error:", error);
+  // Handle the error, e.g., display an error message to the user
+});
+
+socket.addEventListener("message", (event) => {
+  if (isCapturing) {
+    // Process messages only when capturing frames
+    const aiResult = JSON.parse(event.data);
+    console.log("Received AI result during capturing frames:", aiResult);
+    displayCheckedList(aiResult);
+  } else {
+    // Handle messages differently when not capturing frames
+    console.log("Received WebSocket message:", event.data);
+  }
+});
 
 export async function displayCheckbox(apiResponse, onAddItem) {
-  const resultContainer = document.getElementById("result-container");
+  const resultContainer = document.createElement("div");
+  resultContainer.id = "result-container";
+  document.body.appendChild(resultContainer);
 
   // Log the received API response
   console.log("Received API Response:", apiResponse);
@@ -18,6 +42,7 @@ export async function displayCheckbox(apiResponse, onAddItem) {
       return JSON.parse(jsonString);
     } catch (error) {
       console.error("Error parsing JSON:", error);
+      console.error("JSON String causing the error:", jsonString);
       throw new Error("Invalid JSON format");
     }
   }
@@ -46,55 +71,61 @@ export async function displayCheckbox(apiResponse, onAddItem) {
   try {
     // Display the structured content with checkbox icons and input boxes
     resultContainer.innerHTML = `
+    <div>
+      <h1>Checklist</h1>
       <div>
-        <h1>Checklist</h1>
-        <div>
-          <h2>Objects</h2>
-          <ul class="item-list" id="objectList">
-            ${Object.keys(jsonData.checklist.objects)
-              .map(
-                (object, index) => `
-                  <li>
-                    ${index + 1}. 
-                    <span>${object}</span>
-                    <input type="checkbox" ${
-                      jsonData.checklist.objects[object] ? "checked" : ""
-                    }/ >
-                  </li>
-                `
-              )
-              .join("")}
-            <li>
-              <input type="text" class="new-input" id="newObjectInput" placeholder="Add new object"/>
-              <button onclick="addNewItem('objectList', 'newObjectInput')">Add</button>
-            </li>
-          </ul>
-        </div>
-        <div>
-          <h2>Actions</h2>
-          <ul class="item-list" id="actionList">
-            ${Object.keys(jsonData.checklist.actions)
-              .map(
-                (action, index) => `
-                  <li>
-                    ${index + 1}. 
-                    <span>${action}</span>
-                    <input type="checkbox" ${
-                      jsonData.checklist.actions[action] ? "checked" : ""
-                    }/ >
-                  </li>
-                `
-              )
-              .join("")}
-            <li>
-              <input type="text" class="new-input" id="newActionInput" placeholder="Add new action" />
-              <button onclick="addNewItem('actionList', 'newActionInput')">Add</button>
-            </li>
-          </ul>
-        </div>
+        <h2>Objects</h2>
+        <ul class="item-list" id="objectList">
+          ${Object.keys(jsonData.checklist.objects)
+            .map(
+              (object, index) => `
+                <li>
+                  ${index + 1}. 
+                  <span>${object}</span>
+                  <input type="checkbox" ${
+                    jsonData.checklist.objects[object] ? "checked" : ""
+                  }/ >
+                </li>
+              `
+            )
+            .join("")}
+          <li>
+            <input type="text" class="new-input" id="newObjectInput" placeholder="Add new object"/>
+            <button onclick="addNewItem('objectList', 'newObjectInput')">Add</button>
+          </li>
+        </ul>
       </div>
+      <div>
+        <h2>Actions</h2>
+        <ul class="item-list" id="actionList">
+          ${Object.keys(jsonData.checklist.actions)
+            .map(
+              (action, index) => `
+                <li>
+                  ${index + 1}. 
+                  <span>${action}</span>
+                  <input type="checkbox" ${
+                    jsonData.checklist.actions[action] ? "checked" : ""
+                  } />
+                </li>
+              `
+            )
+            .join("")}
+          <li>
+            <input type="text" class="new-input" id="newActionInput" placeholder="Add new action"/>
+            <button onclick="addNewItem('actionList', 'newActionInput')">Add</button>
+          </li>
+        </ul>
+      </div>
+      <button onclick="window.resetChecklist()">Reset Checklist</button>
       <button id="submitBtn">Submit Checklist</button>
-    `;
+    </div>
+  `;
+
+    // Store added items for later use
+    addedItems = [];
+
+    // ...
 
     // Define functions to add new items
     window.addNewItem = async (listId, inputId) => {
@@ -120,19 +151,21 @@ export async function displayCheckbox(apiResponse, onAddItem) {
             jsonData.checklist[listId === "objectList" ? "objects" : "actions"]
           ).length + 1;
 
-        itemList.innerHTML += `
-        <li>
-          ${newItemIndex}. 
-          <span>${newItemInput.value}</span>
-          <input type="checkbox" checked ${
-            jsonData.checklist[listId === "objectList" ? "objects" : "actions"][
-              newItem
-            ]
-              ? "checked"
-              : ""
-          }/>
-        </li>
-      `;
+        const newItemElement = document.createElement("li");
+        newItemElement.innerHTML = `
+      ${newItemIndex}. 
+      <span>${newItemInput.value}</span>
+      <input type="checkbox" checked ${
+        jsonData.checklist[listId === "objectList" ? "objects" : "actions"][
+          newItem
+        ]
+          ? "checked"
+          : ""
+      }/>
+      <button onclick="removeNewItem('${listId}', '${newItem}')">Remove</button>
+    `;
+
+        itemList.appendChild(newItemElement);
 
         // Add new item to jsonData
         jsonData.checklist[listId === "objectList" ? "objects" : "actions"][
@@ -143,13 +176,15 @@ export async function displayCheckbox(apiResponse, onAddItem) {
         addedItems.push(newItem);
 
         // Log the jsonData before submitting
-        console.log("before submit:", jsonData);
+        console.log("before submit1:", jsonData);
 
         // Call the onAddItem callback with the added items
         if (onAddItem) {
           onAddItem(addedItems);
         }
 
+        // Log the jsonData before submitting
+        console.log("before submit2:", jsonData);
         return jsonData;
       } catch (error) {
         console.error("Error adding new items:", error);
@@ -157,90 +192,192 @@ export async function displayCheckbox(apiResponse, onAddItem) {
       }
     };
 
-    // Function to handle WebSocket connection
-    const handleWebSocket = async () => {
-      // Fetch Ngrok status to get the assigned subdomain
-      const getNgrokSubdomain = async () => {
-        const response = await fetch("http://localhost:4040/api/tunnels");
-        const data = await response.json();
-        const tunnelUrl = data.tunnels[0].public_url;
-        const subdomain = tunnelUrl.replace("https://", "").split(".")[0];
-        return subdomain;
-      };
-      // const socket = new WebSocket("ws://localhost:3000");
-      // const socket = new WebSocket("wss://08dd-156-146-51-130.ngrok-free.app");
-      // Update WebSocket URL dynamically
-      const subdomain = await getNgrokSubdomain();
-      const socket = new WebSocket(`wss://${subdomain}.ngrok.io`);
+    // Function to remove newly added items
+    window.removeNewItem = (listId, item) => {
+      try {
+        const itemList = document.getElementById(listId);
 
-      let isCapturing = false; // Flag to track capturing state
+        // Remove the item from the DOM
+        const itemToRemove = Array.from(itemList.children).find(
+          (li) =>
+            li.querySelector("span") &&
+            li.querySelector("span").textContent.toLowerCase() === item
+        );
 
-      // Handle WebSocket connection established
-      socket.addEventListener("open", (event) => {
-        console.log("WebSocket connection opened");
+        if (itemToRemove) {
+          itemList.removeChild(itemToRemove);
 
-        // Start capturing frames
-        const { captureFrames, startCaptureFrames } = cameraFunctions;
+          // Remove the item from jsonData
+          delete jsonData.checklist[
+            listId === "objectList" ? "objects" : "actions"
+          ][item];
 
-        startCaptureFrames();
+          // Remove the item from the addedItems array
+          const itemIndex = addedItems.indexOf(item);
+          if (itemIndex !== -1) {
+            addedItems.splice(itemIndex, 1);
+          }
 
-        // Handle frames and send them to the WebSocket service
-        const sendFramesToWebSocket = async () => {
-          const frames = await captureFrames(100); // Capture frames every 100 milliseconds
-          socket.send(JSON.stringify(frames)); // Send frames as JSON to the WebSocket service
-          sendFramesToWebSocket(); // Continue sending frames continuously
-        };
+          // Log the jsonData after removal
+          console.log("after removal:", jsonData);
 
-        sendFramesToWebSocket();
-      });
-
-      // Handle WebSocket messages (detection results)
-      socket.addEventListener("message", (event) => {
-        if (isCapturing) {
-          try {
-            const detectionResults = JSON.parse(event.data);
-
-            // Display the detection results in the UI
-            displayCheckedList(detectionResults);
-          } catch (error) {
-            console.error("Error parsing WebSocket message:", error);
-            // Handle the error, e.g., display an error message to the user
+          // Check if onRemoveItem is defined before calling it
+          if (typeof onRemoveItem === "function") {
+            // Call the onRemoveItem callback with the removed item
+            onRemoveItem(item);
           }
         }
-      });
-
-      // Handle WebSocket connection closed
-      socket.addEventListener("close", (event) => {
-        console.log("WebSocket connection closed");
-      });
+      } catch (error) {
+        console.error("Error removing item:", error);
+        alert("Error removing item. Please try again.");
+      }
     };
 
-    // Call the function to handle WebSocket connection
-    handleWebSocket();
+    // // Helper function to save the checklist
+    // window.saveChecklist = () => {
+    //   try {
+    //     // Prepare the updated JSON data based on user input
+    //     const updatedJsonData = {
+    //       checklist: {
+    //         objects: {},
+    //         actions: {},
+    //       },
+    //     };
+
+    //     // Iterate over the objects list and update the JSON data
+    //     const objectList = document.getElementById("objectList");
+    //     Array.from(objectList.children).forEach((item, index) => {
+    //       const checkbox = item.querySelector("input[type=checkbox]");
+    //       const textElement = item.querySelector("span");
+
+    //       // Check if textElement is not null before accessing its textContent
+    //       const text = textElement ? textElement.textContent : null;
+
+    //       if (text) {
+    //         updatedJsonData.checklist.objects[text] = checkbox.checked;
+    //       }
+    //     });
+
+    //     // Iterate over the actions list and update the JSON data
+    //     const actionList = document.getElementById("actionList");
+    //     Array.from(actionList.children).forEach((item, index) => {
+    //       const checkbox = item.querySelector("input[type=checkbox]");
+    //       const textElement = item.querySelector("span");
+
+    //       // Check if textElement is not null before accessing its textContent
+    //       const text = textElement ? textElement.textContent : null;
+
+    //       if (text) {
+    //         updatedJsonData.checklist.actions[text] = checkbox.checked;
+    //       }
+    //     });
+
+    //     // Log the updated JSON data
+    //     console.log("Updated JSON Data:", updatedJsonData);
+
+    //     // Display the updated checklist
+    //     displayCheckedList(updatedJsonData);
+    //   } catch (error) {
+    //     console.error("Error saving checklist:", error);
+    //     alert("Error saving checklist. Please try again.");
+    //   }
+    // };
+
+    // Helper function to reset the checklist
+    window.resetChecklist = () => {
+      console.log("before try, Reset Checklist button clicked");
+      try {
+        console.log("after try,Reset Checklist button clicked");
+        // Reset the added items in the UI
+        addedItems.forEach((item) => {
+          const listElement = document.getElementById(item.list);
+          const listItem = listElement?.children[item.index];
+
+          // Check if listItem is truthy before attempting to remove it
+          if (listItem) {
+            listItem.remove();
+
+            // Remove the item from jsonData
+            delete jsonData.checklist[
+              item.list === "objectList" ? "objects" : "actions"
+            ][item.item];
+
+            // Log the jsonData after removal
+            console.log("after removal:", jsonData);
+
+            // Call the onRemoveItem callback with the removed item
+            if (onRemoveItem) {
+              onRemoveItem(item);
+            }
+          }
+        });
+
+        // Clear the added items array
+        addedItems = [];
+      } catch (error) {
+        console.error("Error resetting checklist:", error);
+        alert("Error resetting checklist. Please try again.");
+      }
+    };
 
     // Create and append the "Submit Checklist" button
     const submitButton = document.getElementById("submitBtn");
     submitButton.onclick = async () => {
       try {
-        // Define functions to add new items
-        const {
-          captureFrames,
-          displayFrames,
-          startCaptureFrames,
-          stopCaptureFrames,
-        } = cameraFunctions;
+        const wsMessage = JSON.stringify({
+          type: "ping",
+          jsonData, // Include jsonData in the message
+        });
+        // Send the WebSocket message
+        socket.send(wsMessage);
 
-        const frames = await captureFrames();
+        const { startCaptureFrames, captureFrames, displayFrames, initCamera } =
+          cameraFunctions;
 
-        captureFrames().then((frames) => displayFrames(frames));
+        // Initialize the camera before capturing frames
+        await initCamera();
+
+        // Pause briefly to ensure the camera is initialized before capturing frames
+        await new Promise((resolve) => setTimeout(resolve, 500));
+        // Initialize frames as an empty array
+        let frames = [];
+
+        // Capture frames
+        frames = await captureFrames(frames);
+        // Capture frames
+        displayFrames(frames);
+
+        // Remove the submit button if it's still in the DOM
+        if (submitButton.parentNode) {
+          submitButton.parentNode.removeChild(submitButton);
+        }
 
         // Add a "Start Capturing" button
         const startCaptureButton = document.createElement("button");
         startCaptureButton.textContent = "Start Capturing Frames";
         startCaptureButton.onclick = async () => {
-          // Call startCaptureFrames to start capturing frames
-          startCaptureFrames();
-          isCapturing = true;
+          try {
+            // Initialize the camera before capturing frames
+            await initCamera();
+
+            // Pause briefly to ensure the camera is initialized before capturing frames
+            await new Promise((resolve) => setTimeout(resolve, 500));
+
+            // Initialize frames as an empty array
+            let frames = [];
+
+            // Capture frames
+            frames = await captureFrames(frames);
+
+            // Display frames
+            displayFrames(frames);
+
+            // Call startCaptureFrames to start capturing frames
+            isCapturing = true;
+            startCaptureFrames(socket);
+          } catch (error) {
+            console.error("Error starting capture:", error);
+          }
         };
 
         resultContainer.appendChild(startCaptureButton);
@@ -250,37 +387,10 @@ export async function displayCheckbox(apiResponse, onAddItem) {
         stopCaptureButton.textContent = "Stop Capturing Frames";
         stopCaptureButton.onclick = async () => {
           // Call stopCaptureFrames to stop capturing frames
-          await stopCaptureFrames();
           isCapturing = false;
         };
 
         resultContainer.appendChild(stopCaptureButton);
-
-        // // Send jsonData to the server using fetch or another method
-        // const checkedListResponse = await fetch("/api/checkedList", {
-        //   method: "POST",
-        //   headers: {
-        //     "Content-Type": "application/json",
-        //   },
-        //   body: JSON.stringify({ jsonData, frames }),
-        // });
-
-        // if (!checkedListResponse.ok) {
-        //   throw new Error(`HTTP error! Status: ${checkedListResponse.status}`);
-        // }
-
-        // const checkedListResult = await checkedListResponse.json();
-
-        // // Handle the checkedList result if needed
-        // console.log("checkedListResult:", checkedListResult);
-
-        // // Display the checked list in the result container
-        // displayCheckedList(checkedListResult);
-
-        // Remove the submit button if it's still in the DOM
-        if (submitButton.parentNode) {
-          submitButton.parentNode.removeChild(submitButton);
-        }
       } catch (error) {
         console.error("Error updating checklist:", error);
         document.getElementById("result-container").textContent =
@@ -288,6 +398,8 @@ export async function displayCheckbox(apiResponse, onAddItem) {
       }
     };
 
+    // Log the jsonData before submitting
+    console.log("before submit:", jsonData);
     return jsonData;
   } catch (error) {
     console.error("Error displaying Checkbox:", error);

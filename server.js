@@ -1,77 +1,236 @@
 // server.js
 import express from "express";
 import http from "http";
-import { WebSocketServer } from "ws"; // Import the WebSocket.Server
-import cors from "cors"; // Import the cors middleware
-import { fileURLToPath } from "url"; // Import fileURLToPath function
-import { uploadVideo } from "./api/uploadVideo.js";
-
+import { WebSocketServer } from "ws";
+import cors from "cors";
 import path from "path";
+import { fileURLToPath } from "url";
+import { checkedListAI } from "./api/checkedListAI.js";
 
 const app = express();
 const server = http.createServer(app);
-const wss = new WebSocketServer({ noServer: true }); // Create WebSocketServer instance
-const port = 3000;
+const port = process.env.PORT || 3000;
+
+// const getNgrokSubdomain = async () => {
+//   const response = await fetch("http://localhost:4040/api/tunnels");
+//   const data = await response.json();
+//   const tunnelUrl = data.tunnels[0].public_url;
+//   const subdomain = tunnelUrl.replace("https://", "").split(".")[0];
+//   return subdomain;
+// };
+
+// const subdomain = await getNgrokSubdomain();
+// console.log("Ngrok Subdomain:", subdomain);
+// const ngrokOrigin = `https://${subdomain}.ngrok-free.app`;
+
+// WebSocket server setup using 'ws'
+const wss = new WebSocketServer({ noServer: true });
+
+// Attach the WebSocket server to the existing HTTP server
+wss.server = server;
+
+wss.on("connection", (ws) => {
+  console.log("WebSocket connection opened in checkedListWSS.js");
+
+  ws.on("message", (message) => {
+    console.log(`Received raw message: ${message}`);
+
+    // Check if the message is valid JSON before parsing
+    try {
+      const data = JSON.parse(message);
+
+      // Handle the parsed data based on its structure
+      if (data.type === "ping") {
+        // Handle ping message
+        ws.send(JSON.stringify({ type: "pong" }));
+
+        // frames received from websocket
+        const frames = data.frames;
+        const jsonData = data.jsonData;
+
+        if (data.type === "jsonData") {
+          jsonData = message.data;
+        } else if (data.type === "frames") {
+          framesReceived++;
+          if (jsonData && frames > 0) {
+            // Both jsonData and at least one frame received, trigger checkedListAI
+
+            const content = checkedListAI(jsonData, frames);
+
+            // Send the content to all connected WebSocket clients
+            clients.forEach((client) => {
+              if (client.readyState === WebSocket.OPEN) {
+                client.send(content);
+              }
+            });
+          }
+        }
+      } else {
+        // Handle other types of messages
+      }
+    } catch (error) {
+      console.error("Error parsing WebSocket message:", error);
+      // Handle the error, e.g., display an error message to the user
+    }
+  });
+
+  ws.on("close", (code, reason) => {
+    console.log(`WebSocket closed with code: ${code}, reason: ${reason}`);
+  });
+
+  // Handle ping/pong
+  ws.on("ping", () => {
+    console.log("Received ping from client");
+  });
+
+  ws.on("pong", () => {
+    console.log("Received pong from client");
+  });
+
+  // Set up a periodic ping to keep the connection alive
+  const pingInterval = setInterval(() => {
+    if (ws.readyState === ws.OPEN) {
+      ws.ping();
+    } else {
+      clearInterval(pingInterval);
+    }
+  }, 30000); // Send a ping every 30 seconds
+});
+
+// Use cors middleware with specific origin
+app.use(
+  cors({
+    origin: [
+      "http://0.0.0.0:3000",
+      "http://localhost:3000",
+      "http://127.0.0.1:8080",
+      "http://localhost:4040",
+      "http://localhost:443",
+      // ngrokOrigin,
+    ],
+    optionsSuccessStatus: 200,
+  })
+);
+
+process.on("unhandledRejection", (error) => {
+  console.error("Unhandled Promise Rejection:", error);
+});
 
 // Get the directory path using import.meta.url
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// Use cors middleware
-app.use(cors());
+// Serve static files from the project directory
+app.use(express.static(path.join(__dirname, "public")));
 
-app.use(
-  express.static(path.join(__dirname, "public"), {
-    // Use path.join to join __dirname and "public"
-    extensions: ["html", "js"],
-    type: "application/javascript",
-  })
-);
+// console.log("Before unhandledRejection listener setup");
+// process.on("unhandledRejection", (error) => {
+//   console.error("Unhandled Promise Rejection:", error);
+// });
+// console.log("After unhandledRejection listener setup");
 
-app.get("/", (req, res) => {
-  res.sendFile(path.join(__dirname, "public", "index.html")); // Use path.join to join __dirname, "public", and "index.html"
+// Middleware to set the correct MIME type for JavaScript files
+app.use((req, res, next) => {
+  if (req.path.endsWith(".js")) {
+    res.type("application/javascript");
+  }
+  next();
 });
 
-// Step 0. Handle video upload
-// Handle video upload
-app.post("/api/uploadVideo", express.json(), uploadVideo);
+app.get("/displayCheckbox", (req, res) => {
+  res.type("application/javascript");
+  res.sendFile(path.join(__dirname, "/public/displayCheckbox.js"));
+});
 
-// Use the WebSocket service with the HTTP server
-server.on("upgrade", (request, socket, head) => {
-  wss.handleUpgrade(request, socket, head, (ws) => {
-    console.log("WebSocket connection established");
-    wss.emit("connection", ws, request);
+app.get("/frameCallback", (req, res) => {
+  res.type("application/javascript");
+  res.sendFile(path.join(__dirname, "/public/frameCallback.js"));
+});
+
+// Enable CORS for all routes
+app.use((req, res, next) => {
+  res.header("Access-Control-Allow-Origin", "*"); // Allow requests from any origin
+  res.header("Access-Control-Allow-Methods", "GET, POST, OPTIONS");
+  res.header(
+    "Access-Control-Allow-Headers",
+    "Origin, X-Requested-With, Content-Type, Accept"
+  );
+
+  // Set Content-Security-Policy header
+  res.header("Content-Security-Policy", "default-src 'self'"); // Allow scripts only from the same origin
+
+  next();
+});
+
+app.use((req, res, next) => {
+  res.setHeader(
+    "Content-Security-Policy",
+    `default-src 'self'; script-src 'self'; connect-src 'self' ${ngrokOrigin};`
+  );
+  next();
+});
+
+// Define the path to your JavaScript file
+const checkedListFilePath = path.join(__dirname, "/api/checkedListAI.js");
+
+// Serve checkedList.js with the correct Content-Type
+app.get("/api/checkedListAI.js", (req, res) => {
+  res.setHeader("Content-Type", "application/javascript");
+
+  // Send the file
+  res.sendFile(checkedListFilePath, (err) => {
+    if (err) {
+      console.error("Error sending checkedList.js:", err);
+      res.status(500).send("Internal Server Error");
+    }
   });
 });
 
-// Step 1. get CHECKBOX FINAL Checklist
-app.get("/api/uploadVideo", async (req, res) => {
+// Expose an API endpoint for the client to interact with
+app.post("/api/checkedListAI", async (req, res) => {
   try {
-    const result = await uploadVideo();
-    console.error("Server Step 1 :", result);
-    res.json(result);
+    // Extract jsonData and frames from the request
+    const { jsonData, frames } = req.body;
+
+    // Call checkedList function
+    const content = await checkedListAI(jsonData, frames);
+
+    // Send the content as the API response
+    res.status(200).json({ content });
   } catch (error) {
-    console.error("Error:", error);
+    console.error("Error in checkedListAI API endpoint:", error);
     res.status(500).json({ error: "Internal Server Error" });
   }
 });
 
-// Step 2. post Final CheckList to checkedList API and return result
-// app.post("/api/checkedList", express.json(), async (req, res) => {
-//   const { jsonData, frames } = req.body; // Assuming the client sends jsonData in the request body
+server.on("upgrade", (request, ws, head) => {
+  const allowedOrigins = [
+    "http://0.0.0.0:3000",
+    "http://localhost:3000",
+    "http://127.0.0.1:8080",
+    "http://localhost:4040",
+    "http://localhost:443",
+    // ngrokOrigin,
+  ];
+  const origin = request.headers.origin;
 
-//   try {
-//     const result = await checkedList(jsonData, frames);
-//     console.error("Server Step 2 :", result);
-//     res.json(result);
-//   } catch (error) {
-//     console.error("Error:", error);
-//     res.status(500).json({ error: "Internal Server Error" });
-//   }
-// });
-
-app.listen(port, "0.0.0.0", () => {
-  // console.log(`Server listening at http://localhost:${port}`);
-  // console.log(`Server is running on port ${port}`);
-  console.log("Server listening at http://0.0.0.0:3000");
+  // if (allowedOrigins.includes(origin) || allowedOrigins.includes(ngrokOrigin)) {
+  if (allowedOrigins.includes(origin)) {
+    wss.handleUpgrade(request, ws, head, (ws) => {
+      wss.emit("connection", ws, request);
+    });
+  } else {
+    ws.destroy();
+    console.error("WebSocket connection upgrade failed: Origin not allowed");
+  }
 });
+
+server.listen(port, "0.0.0.0", () => {
+  console.log(`Server listening at http://0.0.0.0:${port}`);
+});
+
+// console.log("Before unhandledRejection listener setup");
+// process.on("unhandledRejection", (error) => {
+//   console.error("Unhandled Promise Rejection:", error);
+// });
+// console.log("After unhandledRejection listener setup");
