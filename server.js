@@ -7,6 +7,38 @@ import path from "path";
 import { fileURLToPath } from "url";
 import { checkedListAI } from "./api/checkedListAI.js";
 
+// import { ACM } from "@aws-sdk/client-acm";
+// import https from "https";
+
+// const acm = new ACM({ region: "us-east-2" }); // Set your desired AWS region here
+// const certificateArn =
+//   // "arn:aws:acm:region:account-id:certificate/certificate-id";
+//   "arn:aws:acm:us-east-2:006409069470:certificate/b957a3c0-e5a3-42d1-9ab2-e4622a15dd32";
+
+// acm.describeCertificate(
+//   { CertificateArn: certificateArn },
+//   async (err, data) => {
+//     if (err) {
+//       console.error("Error retrieving ACM certificate:", err);
+//       return;
+//     }
+
+//     const { Certificate } = data;
+
+//     const options = {
+//       cert: Certificate.CertificateBody,
+//       key: Certificate.CertificatePrivateKey,
+//       // Add any other necessary options
+//     };
+
+//     const server = https.createServer(options, app);
+
+//     server.listen(443, () => {
+//       console.log("Server running on https://localhost:443/");
+//     });
+//   }
+// );
+
 const app = express();
 const server = http.createServer(app);
 const port = process.env.PORT || 3000;
