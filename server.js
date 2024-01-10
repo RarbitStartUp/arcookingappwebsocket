@@ -193,7 +193,7 @@ app.use((req, res, next) => {
 app.use((req, res, next) => {
   res.setHeader(
     "Content-Security-Policy",
-    `default-src 'self'; script-src 'self'; connect-src 'self' ${ngrokOrigin};`
+    `default-src 'self'; script-src 'self'; connect-src 'self';`
   );
   next();
 });
