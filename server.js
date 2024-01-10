@@ -155,6 +155,12 @@ const __dirname = path.dirname(__filename);
 // Serve static files from the project directory
 app.use(express.static(path.join(__dirname, "public")));
 
+// New route for custom health check endpoint
+app.get("/healthcheck", (req, res) => {
+  // Respond with a simple 200 OK for health checks
+  res.status(200).send("OK");
+});
+
 // console.log("Before unhandledRejection listener setup");
 // process.on("unhandledRejection", (error) => {
 //   console.error("Unhandled Promise Rejection:", error);
