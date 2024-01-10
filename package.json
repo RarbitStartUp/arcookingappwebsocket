@@ -13,7 +13,7 @@
     "@aws-sdk/client-acm": "^3.485.0",
     "@google-cloud/storage": "^7.7.0",
     "@google-cloud/vertexai": "^0.1.3",
-    "aws-sdk": "^2.1532.0",
+    "aws-sdk": "^2.1533.0",
     "body-parser": "^1.20.2",
     "cors": "^2.8.5",
     "cross-fetch": "^4.0.0",

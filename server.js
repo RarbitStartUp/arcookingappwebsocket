@@ -1,11 +1,27 @@
 // server.js
 import express from "express";
-import http from "http";
+import https from "https";
 import { WebSocketServer } from "ws";
+import fs from "fs";
 import cors from "cors";
-import path from "path";
+import path from "path"; // Import join from path
 import { fileURLToPath } from "url";
 import { checkedListAI } from "./api/checkedListAI.js";
+
+// Get the directory path using import.meta.url
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+const keysPath = path.join(__dirname, "Keys"); // Use path.join
+
+const options = {
+  key: fs.readFileSync(path.join(keysPath, "private-key.pem")),
+  cert: fs.readFileSync(path.join(keysPath, "certificate.pem")),
+};
+
+const app = express();
+const server = https.createServer(options, app);
+const port = process.env.PORT || 3000;
 
 // import { ACM } from "@aws-sdk/client-acm";
 // import https from "https";
@@ -38,10 +54,6 @@ import { checkedListAI } from "./api/checkedListAI.js";
 //     });
 //   }
 // );
-
-const app = express();
-const server = http.createServer(app);
-const port = process.env.PORT || 3000;
 
 // const getNgrokSubdomain = async () => {
 //   const response = await fetch("http://localhost:4040/api/tunnels");
@@ -147,10 +159,6 @@ app.use(
 process.on("unhandledRejection", (error) => {
   console.error("Unhandled Promise Rejection:", error);
 });
-
-// Get the directory path using import.meta.url
-const __filename = fileURLToPath(import.meta.url);
-const __dirname = path.dirname(__filename);
 
 // Serve static files from the project directory
 app.use(express.static(path.join(__dirname, "public")));
