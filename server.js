@@ -1,71 +1,41 @@
 // server.js
 import express from "express";
-import https from "https";
-import { WebSocketServer } from "ws";
-import fs from "fs";
+// import https from "https";
+import http from "http";
+import { WebSocketServer , WebSocket } from "ws";
+// import fs from "fs";
 import cors from "cors";
 import path from "path"; // Import join from path
 import { fileURLToPath } from "url";
 import { checkedListAI } from "./api/checkedListAI.js";
 
+// const keysPath = path.join(__dirname, "Keys"); // Use path.join
+
+// const options = {
+//   key: fs.readFileSync(path.join(keysPath, "private-key.pem")),
+//   cert: fs.readFileSync(path.join(keysPath, "certificate.pem")),
+// };
+
+const app = express();
+// const server = https.createServer(options, app);
+const server = http.createServer(app);
+const port = process.env.PORT || 3001;
+
 // Get the directory path using import.meta.url
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const keysPath = path.join(__dirname, "Keys"); // Use path.join
-
-const options = {
-  key: fs.readFileSync(path.join(keysPath, "private-key.pem")),
-  cert: fs.readFileSync(path.join(keysPath, "certificate.pem")),
+const getNgrokSubdomain = async () => {
+  const response = await fetch("http://localhost:4040/api/tunnels");
+  const data = await response.json();
+  const tunnelUrl = data.tunnels[0].public_url;
+  const subdomain = tunnelUrl.replace("https://", "").split(".")[0];
+  return subdomain;
 };
 
-const app = express();
-const server = https.createServer(options, app);
-const port = process.env.PORT || 3000;
-
-// import { ACM } from "@aws-sdk/client-acm";
-// import https from "https";
-
-// const acm = new ACM({ region: "us-east-2" }); // Set your desired AWS region here
-// const certificateArn =
-//   // "arn:aws:acm:region:account-id:certificate/certificate-id";
-//   "arn:aws:acm:us-east-2:006409069470:certificate/b957a3c0-e5a3-42d1-9ab2-e4622a15dd32";
-
-// acm.describeCertificate(
-//   { CertificateArn: certificateArn },
-//   async (err, data) => {
-//     if (err) {
-//       console.error("Error retrieving ACM certificate:", err);
-//       return;
-//     }
-
-//     const { Certificate } = data;
-
-//     const options = {
-//       cert: Certificate.CertificateBody,
-//       key: Certificate.CertificatePrivateKey,
-//       // Add any other necessary options
-//     };
-
-//     const server = https.createServer(options, app);
-
-//     server.listen(443, () => {
-//       console.log("Server running on https://localhost:443/");
-//     });
-//   }
-// );
-
-// const getNgrokSubdomain = async () => {
-//   const response = await fetch("http://localhost:4040/api/tunnels");
-//   const data = await response.json();
-//   const tunnelUrl = data.tunnels[0].public_url;
-//   const subdomain = tunnelUrl.replace("https://", "").split(".")[0];
-//   return subdomain;
-// };
-
-// const subdomain = await getNgrokSubdomain();
-// console.log("Ngrok Subdomain:", subdomain);
-// const ngrokOrigin = `https://${subdomain}.ngrok-free.app`;
+const subdomain = await getNgrokSubdomain();
+console.log("Ngrok Subdomain:", subdomain);
+const ngrokOrigin = `https://${subdomain}.ngrok-free.app`;
 
 // WebSocket server setup using 'ws'
 const wss = new WebSocketServer({ noServer: true });
@@ -73,41 +43,80 @@ const wss = new WebSocketServer({ noServer: true });
 // Attach the WebSocket server to the existing HTTP server
 wss.server = server;
 
-wss.on("connection", (ws) => {
-  console.log("WebSocket connection opened in checkedListWSS.js");
+const clients = new Set(); // Using a Set to store connected clients
 
-  ws.on("message", (message) => {
-    console.log(`Received raw message: ${message}`);
+wss.on("connection", (ws) => {
+
+  // Add the newly connected client to the set
+  clients.add(ws);
+  // Define variables to track incoming data
+let jsonDataReceived = false;
+let framesReceived = 0;
+let frames;
+let jsonData;
+  console.log("WebSocket connection opened in server.js");
+
+  ws.on("message", async (message) => {
+    // console.log(`Received raw message: ${message}`);
 
     // Check if the message is valid JSON before parsing
     try {
       const data = JSON.parse(message);
+      console.log("data :", data)
 
       // Handle the parsed data based on its structure
       if (data.type === "ping") {
         // Handle ping message
         ws.send(JSON.stringify({ type: "pong" }));
+      } else if (data.type === "jsonData") {
+        try {
+          // Handle jsonData
+          console.log("Setting jsonDataReceived flag");
+          jsonDataReceived = true;
+          console.log("jsonDataReceived :", jsonDataReceived);
+          console.log("jsonDataReceived is now true");
+          console.log("data.jsonData :", data.jsonData);
+          jsonData = data.jsonData;
+        } catch (error) {
+          console.error("Error handling jsonData:", error);
+        }
+      } else if (data.type === "frames") {
+        // Handle live stream frames
+        console.log("data.frames :", data.frames)
+        frames = data.frames;
+        framesReceived++;
+        console.log("jsonDataReceived:", jsonDataReceived);
+        console.log("framesReceived:", framesReceived);
 
-        // frames received from websocket
-        const frames = data.frames;
-        const jsonData = data.jsonData;
+        // if (jsonDataReceived && framesReceived === 1 ) {
+          if ( jsonDataReceived && framesReceived > 0 && framesReceived <= 16 ) {
+          // Both jsonData and at least one frame received, trigger checkedListAI
 
-        if (data.type === "jsonData") {
-          jsonData = message.data;
-        } else if (data.type === "frames") {
-          framesReceived++;
-          if (jsonData && frames > 0) {
-            // Both jsonData and at least one frame received, trigger checkedListAI
+          // Log the data being sent to the AI API endpoint
+          console.log("Sending data to AI API endpoint:", { jsonData, frames });
+          const content = await checkedListAI(jsonData, frames);
+try{
 
-            const content = checkedListAI(jsonData, frames);
-
-            // Send the content to all connected WebSocket clients
-            clients.forEach((client) => {
-              if (client.readyState === WebSocket.OPEN) {
-                client.send(content);
-              }
-            });
-          }
+  // Log the data being sent to the AI API endpoint
+  console.log("content - AI result returned from AI API endpoint :", content );
+  
+  const aiResult = content.parts[0].text;
+  console.log("aiResult before ws send to client :", aiResult);
+  // Send the content to all connected WebSocket clients
+  clients.forEach((client) => {
+    if (client.readyState === WebSocket.OPEN) {
+      client.send(aiResult);
+    }
+  });
+  
+  console.log("aiResult already sent to client.");
+  // Reset flags after processing
+  // jsonDataReceived = false;
+  framesReceived = 0;
+}catch (error) {
+  console.error("Error processing frames asynchronously:", error);
+}
+          // jsonData = null;
         }
       } else {
         // Handle other types of messages
@@ -147,10 +156,12 @@ app.use(
     origin: [
       "http://0.0.0.0:3000",
       "http://localhost:3000",
+      "http://localhost:3001",
       "http://127.0.0.1:8080",
       "http://localhost:4040",
       "http://localhost:443",
-      // ngrokOrigin,
+      "https://rarbitarcookingapp.vercel.app",
+      ngrokOrigin,
     ],
     optionsSuccessStatus: 200,
   })
@@ -169,13 +180,6 @@ app.get("/healthcheck", (req, res) => {
   res.status(200).send("OK");
 });
 
-// console.log("Before unhandledRejection listener setup");
-// process.on("unhandledRejection", (error) => {
-//   console.error("Unhandled Promise Rejection:", error);
-// });
-// console.log("After unhandledRejection listener setup");
-
-// Middleware to set the correct MIME type for JavaScript files
 app.use((req, res, next) => {
   if (req.path.endsWith(".js")) {
     res.type("application/javascript");
@@ -243,15 +247,17 @@ server.on("upgrade", (request, ws, head) => {
   const allowedOrigins = [
     "http://0.0.0.0:3000",
     "http://localhost:3000",
+    "http://localhost:3001",
     "http://127.0.0.1:8080",
     "http://localhost:4040",
     "http://localhost:443",
-    // ngrokOrigin,
+    "https://rarbitarcookingapp.vercel.app",
+    ngrokOrigin,
   ];
   const origin = request.headers.origin;
 
-  // if (allowedOrigins.includes(origin) || allowedOrigins.includes(ngrokOrigin)) {
-  if (allowedOrigins.includes(origin)) {
+  if (allowedOrigins.includes(origin) || allowedOrigins.includes(ngrokOrigin)) {
+    // if (allowedOrigins.includes(origin)) {
     wss.handleUpgrade(request, ws, head, (ws) => {
       wss.emit("connection", ws, request);
     });
@@ -264,9 +270,3 @@ server.on("upgrade", (request, ws, head) => {
 server.listen(port, "0.0.0.0", () => {
   console.log(`Server listening at http://0.0.0.0:${port}`);
 });
-
-// console.log("Before unhandledRejection listener setup");
-// process.on("unhandledRejection", (error) => {
-//   console.error("Unhandled Promise Rejection:", error);
-// });
-// console.log("After unhandledRejection listener setup");
