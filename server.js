@@ -25,17 +25,17 @@ const port = process.env.PORT || 3001;
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const getNgrokSubdomain = async () => {
-  const response = await fetch("http://localhost:4040/api/tunnels");
-  const data = await response.json();
-  const tunnelUrl = data.tunnels[0].public_url;
-  const subdomain = tunnelUrl.replace("https://", "").split(".")[0];
-  return subdomain;
-};
+// const getNgrokSubdomain = async () => {
+//   const response = await fetch("http://localhost:4040/api/tunnels");
+//   const data = await response.json();
+//   const tunnelUrl = data.tunnels[0].public_url;
+//   const subdomain = tunnelUrl.replace("https://", "").split(".")[0];
+//   return subdomain;
+// };
 
-const subdomain = await getNgrokSubdomain();
-console.log("Ngrok Subdomain:", subdomain);
-const ngrokOrigin = `https://${subdomain}.ngrok-free.app`;
+// const subdomain = await getNgrokSubdomain();
+// console.log("Ngrok Subdomain:", subdomain);
+// const ngrokOrigin = `https://${subdomain}.ngrok-free.app`;
 
 // WebSocket server setup using 'ws'
 const wss = new WebSocketServer({ noServer: true });
@@ -161,7 +161,7 @@ app.use(
       "http://localhost:4040",
       "http://localhost:443",
       "https://rarbitarcookingapp.vercel.app",
-      ngrokOrigin,
+      // ngrokOrigin,
     ],
     optionsSuccessStatus: 200,
   })
@@ -252,11 +252,12 @@ server.on("upgrade", (request, ws, head) => {
     "http://localhost:4040",
     "http://localhost:443",
     "https://rarbitarcookingapp.vercel.app",
-    ngrokOrigin,
+    // ngrokOrigin,
   ];
   const origin = request.headers.origin;
 
-  if (allowedOrigins.includes(origin) || allowedOrigins.includes(ngrokOrigin)) {
+  // if (allowedOrigins.includes(origin) || allowedOrigins.includes(ngrokOrigin)) {
+  if (allowedOrigins.includes(origin)) {
     // if (allowedOrigins.includes(origin)) {
     wss.handleUpgrade(request, ws, head, (ws) => {
       wss.emit("connection", ws, request);
