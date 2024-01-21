@@ -176,6 +176,8 @@ app.use(express.static(path.join(__dirname, "public")));
 
 // New route for custom health check endpoint
 app.get("/healthcheck", (req, res) => {
+  // Log the incoming health check request
+  console.log("Received health check request");
   // Respond with a simple 200 OK for health checks
   res.status(200).send("OK");
 });

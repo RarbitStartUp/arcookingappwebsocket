@@ -7,7 +7,8 @@
   "type": "module",
   "license": "ISC",
   "scripts": {
-    "start": "nodemon server.js"
+    "start": "nodemon server.js", 
+    "start:prod": "node server.js" 
   },
   "dependencies": {
     "@aws-sdk/client-acm": "^3.485.0",
