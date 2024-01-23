@@ -170,6 +170,7 @@ app.use(
       "http://localhost:443",
       "https://rarbitarcookingapp.vercel.app",
       "https://www.rarbit.com",
+      "https://rarbit.com",
       // ngrokOrigin,
     ],
     optionsSuccessStatus: 200,
@@ -265,6 +266,7 @@ server.on("upgrade", (request, ws, head) => {
     "http://localhost:443",
     "https://rarbitarcookingapp.vercel.app",
     "https://www.rarbit.com",
+    "https://rarbit.com",
     // ngrokOrigin,
   ];
   const origin = request.headers.origin;
