@@ -2,7 +2,8 @@
 import express from "express";
 // import https from "https";
 import http from "http";
-import { WebSocketServer , WebSocket } from "ws";
+// import { WebSocketServer , WebSocket } from "ws";
+import { Server } from "socket.io";
 // import fs from "fs";
 import cors from "cors";
 import path from "path"; // Import join from path
@@ -38,17 +39,18 @@ const __dirname = path.dirname(__filename);
 // const ngrokOrigin = `https://${subdomain}.ngrok-free.app`;
 
 // WebSocket server setup using 'ws'
-const wss = new WebSocketServer({ noServer: true });
+// const wss = new WebSocketServer({ noServer: true });
+const io = new Server(server); 
 
 // Attach the WebSocket server to the existing HTTP server
-wss.server = server;
+// wss.server = server;
 
 const clients = new Set(); // Using a Set to store connected clients
 
-wss.on("connection", (ws) => {
+io.on("connection", (socket) => {
 
   // Add the newly connected client to the set
-  clients.add(ws);
+  clients.add(socket);
   // Define variables to track incoming data
 let jsonDataReceived = false;
 let framesReceived = 0;
@@ -56,7 +58,7 @@ let frames;
 let jsonData;
   console.log("WebSocket connection opened in server.js");
 
-  ws.on("message", async (message) => {
+  socket.on("message", async (message) => {
     // console.log(`Received raw message: ${message}`);
 
     // Check if the message is valid JSON before parsing
@@ -67,7 +69,8 @@ let jsonData;
       // Handle the parsed data based on its structure
       if (data.type === "ping") {
         // Handle ping message
-        ws.send(JSON.stringify({ type: "pong" }));
+        // ws.send(JSON.stringify({ type: "pong" }));
+        socket.emit('pong');
       } else if (data.type === "jsonData") {
         try {
           // Handle jsonData
@@ -103,11 +106,12 @@ try{
   const aiResult = content.parts[0].text;
   console.log("aiResult before ws send to client :", aiResult);
   // Send the content to all connected WebSocket clients
-  clients.forEach((client) => {
-    if (client.readyState === WebSocket.OPEN) {
-      client.send(aiResult);
-    }
-  });
+  io.emit('aiResult', aiResult);
+  // clients.forEach((client) => {
+  //   if (client.readyState === WebSocket.OPEN) {
+  //     client.send(aiResult);
+  //   }
+  // });
   
   console.log("aiResult already sent to client.");
   // Reset flags after processing
@@ -127,28 +131,31 @@ try{
     }
   });
 
-  ws.on("close", (code, reason) => {
-    console.log(`WebSocket closed with code: ${code}, reason: ${reason}`);
+  socket.on("disconnect", (reason) => {
+    console.log(`WebSocket closed. Reason: ${reason}`);
+    clients.delete(socket);
   });
+  
+});
 
   // Handle ping/pong
-  ws.on("ping", () => {
-    console.log("Received ping from client");
-  });
+//   ws.on("ping", () => {
+//     console.log("Received ping from client");
+//   });
 
-  ws.on("pong", () => {
-    console.log("Received pong from client");
-  });
+//   ws.on("pong", () => {
+//     console.log("Received pong from client");
+//   });
 
-  // Set up a periodic ping to keep the connection alive
-  const pingInterval = setInterval(() => {
-    if (ws.readyState === ws.OPEN) {
-      ws.ping();
-    } else {
-      clearInterval(pingInterval);
-    }
-  }, 30000); // Send a ping every 30 seconds
-});
+//   // Set up a periodic ping to keep the connection alive
+//   const pingInterval = setInterval(() => {
+//     if (ws.readyState === ws.OPEN) {
+//       ws.ping();
+//     } else {
+//       clearInterval(pingInterval);
+//     }
+//   }, 30000); // Send a ping every 30 seconds
+
 
 // Use cors middleware with specific origin
 app.use(
@@ -161,6 +168,7 @@ app.use(
       "http://localhost:4040",
       "http://localhost:443",
       "https://rarbitarcookingapp.vercel.app",
+      "https://www.rarbit.com",
       // ngrokOrigin,
     ],
     optionsSuccessStatus: 200,
@@ -254,6 +262,7 @@ server.on("upgrade", (request, ws, head) => {
     "http://localhost:4040",
     "http://localhost:443",
     "https://rarbitarcookingapp.vercel.app",
+    "https://www.rarbit.com",
     // ngrokOrigin,
   ];
   const origin = request.headers.origin;

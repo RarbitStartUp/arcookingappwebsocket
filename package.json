@@ -7,8 +7,8 @@
   "type": "module",
   "license": "ISC",
   "scripts": {
-    "start": "nodemon server.js", 
-    "start:prod": "node server.js" 
+    "start": "nodemon server.js",
+    "start:prod": "node server.js"
   },
   "dependencies": {
     "@aws-sdk/client-acm": "^3.485.0",
@@ -19,7 +19,6 @@
     "cors": "^2.8.5",
     "cross-fetch": "^4.0.0",
     "dotenv": "^16.3.1",
-    "envalid": "^8.0.0",
     "express": "^4.18.2",
     "file-uri-to-path": "^2.0.0",
     "helmet": "^7.1.0",
@@ -29,8 +28,7 @@
     "path": "^0.12.7",
     "punycode": "^2.3.1",
     "sharp": "^0.33.2",
-    "websocket": "^1.0.34",
-    "ws": "^8.16.0",
+    "socket.io": "^4.7.4",
     "ytdl-core": "^4.11.5"
   },
   "devDependencies": {
