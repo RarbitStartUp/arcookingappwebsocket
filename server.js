@@ -162,6 +162,7 @@ app.use(
   cors({
     origin: [
       "http://0.0.0.0:3000",
+      "http://0.0.0.0:3001",
       "http://localhost:3000",
       "http://localhost:3001",
       "http://127.0.0.1:8080",
@@ -256,6 +257,7 @@ app.post("/api/checkedListAI", async (req, res) => {
 server.on("upgrade", (request, ws, head) => {
   const allowedOrigins = [
     "http://0.0.0.0:3000",
+    "http://0.0.0.0:3001",
     "http://localhost:3000",
     "http://localhost:3001",
     "http://127.0.0.1:8080",
