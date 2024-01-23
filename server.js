@@ -1,24 +1,13 @@
 // server.js
 import express from "express";
-// import https from "https";
 import http from "http";
-// import { WebSocketServer , WebSocket } from "ws";
 import { Server } from "socket.io";
-// import fs from "fs";
 import cors from "cors";
 import path from "path"; // Import join from path
 import { fileURLToPath } from "url";
 import { checkedListAI } from "./api/checkedListAI.js";
 
-// const keysPath = path.join(__dirname, "Keys"); // Use path.join
-
-// const options = {
-//   key: fs.readFileSync(path.join(keysPath, "private-key.pem")),
-//   cert: fs.readFileSync(path.join(keysPath, "certificate.pem")),
-// };
-
 const app = express();
-// const server = https.createServer(options, app);
 const server = http.createServer(app);
 const port = process.env.PORT || 3001;
 
@@ -26,24 +15,24 @@ const port = process.env.PORT || 3001;
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-// const getNgrokSubdomain = async () => {
-//   const response = await fetch("http://localhost:4040/api/tunnels");
-//   const data = await response.json();
-//   const tunnelUrl = data.tunnels[0].public_url;
-//   const subdomain = tunnelUrl.replace("https://", "").split(".")[0];
-//   return subdomain;
-// };
-
-// const subdomain = await getNgrokSubdomain();
-// console.log("Ngrok Subdomain:", subdomain);
-// const ngrokOrigin = `https://${subdomain}.ngrok-free.app`;
-
-// WebSocket server setup using 'ws'
-// const wss = new WebSocketServer({ noServer: true });
-const io = new Server(server); 
-
-// Attach the WebSocket server to the existing HTTP server
-// wss.server = server;
+const io = new Server(server, {
+  cors: {
+    origin: [
+      "http://0.0.0.0:3000",
+      "http://0.0.0.0:3001",
+      "http://localhost:3000",
+      "http://localhost:3001",
+      "http://127.0.0.1:8080",
+      "http://localhost:4040",
+      "http://localhost:443",
+      "https://rarbitarcookingapp.vercel.app",
+      "https://www.rarbit.com",
+      "https://rarbit.com",
+      "https://rarbit.tech",
+      // ngrokOrigin,
+    ],
+  },
+});
 
 const clients = new Set(); // Using a Set to store connected clients
 
@@ -107,11 +96,6 @@ try{
   console.log("aiResult before ws send to client :", aiResult);
   // Send the content to all connected WebSocket clients
   io.emit('aiResult', aiResult);
-  // clients.forEach((client) => {
-  //   if (client.readyState === WebSocket.OPEN) {
-  //     client.send(aiResult);
-  //   }
-  // });
   
   console.log("aiResult already sent to client.");
   // Reset flags after processing
@@ -137,46 +121,6 @@ try{
   });
   
 });
-
-  // Handle ping/pong
-//   ws.on("ping", () => {
-//     console.log("Received ping from client");
-//   });
-
-//   ws.on("pong", () => {
-//     console.log("Received pong from client");
-//   });
-
-//   // Set up a periodic ping to keep the connection alive
-//   const pingInterval = setInterval(() => {
-//     if (ws.readyState === ws.OPEN) {
-//       ws.ping();
-//     } else {
-//       clearInterval(pingInterval);
-//     }
-//   }, 30000); // Send a ping every 30 seconds
-
-
-// Use cors middleware with specific origin
-app.use(
-  cors({
-    origin: [
-      "http://0.0.0.0:3000",
-      "http://0.0.0.0:3001",
-      "http://localhost:3000",
-      "http://localhost:3001",
-      "http://127.0.0.1:8080",
-      "http://localhost:4040",
-      "http://localhost:443",
-      "https://rarbitarcookingapp.vercel.app",
-      "https://www.rarbit.com",
-      "https://rarbit.com",
-      "https://rarbit.tech",
-      // ngrokOrigin,
-    ],
-    optionsSuccessStatus: 200,
-  })
-);
 
 process.on("unhandledRejection", (error) => {
   console.error("Unhandled Promise Rejection:", error);
@@ -240,51 +184,22 @@ app.get("/api/checkedListAI.js", (req, res) => {
 });
 
 // Expose an API endpoint for the client to interact with
-app.post("/api/checkedListAI", async (req, res) => {
-  try {
-    // Extract jsonData and frames from the request
-    const { jsonData, frames } = req.body;
+// app.post("/api/checkedListAI", async (req, res) => {
+//   try {
+//     // Extract jsonData and frames from the request
+//     const { jsonData, frames } = req.body;
 
-    // Call checkedList function
-    const content = await checkedListAI(jsonData, frames);
+//     // Call checkedList function
+//     const content = await checkedListAI(jsonData, frames);
 
-    // Send the content as the API response
-    res.status(200).json({ content });
-  } catch (error) {
-    console.error("Error in checkedListAI API endpoint:", error);
-    res.status(500).json({ error: "Internal Server Error" });
-  }
-});
+//     // Send the content as the API response
+//     res.status(200).json({ content });
+//   } catch (error) {
+//     console.error("Error in checkedListAI API endpoint:", error);
+//     res.status(500).json({ error: "Internal Server Error" });
+//   }
+// });
 
-server.on("upgrade", (request, ws, head) => {
-  const allowedOrigins = [
-    "http://0.0.0.0:3000",
-    "http://0.0.0.0:3001",
-    "http://localhost:3000",
-    "http://localhost:3001",
-    "http://127.0.0.1:8080",
-    "http://localhost:4040",
-    "http://localhost:443",
-    "https://rarbitarcookingapp.vercel.app",
-    "https://www.rarbit.com",
-    "https://rarbit.com",
-    "https://rarbit.tech",
-    // ngrokOrigin,
-  ];
-  const origin = request.headers.origin;
-
-  // if (allowedOrigins.includes(origin) || allowedOrigins.includes(ngrokOrigin)) {
-  if (allowedOrigins.includes(origin)) {
-    // if (allowedOrigins.includes(origin)) {
-    wss.handleUpgrade(request, ws, head, (ws) => {
-      wss.emit("connection", ws, request);
-    });
-  } else {
-    ws.destroy();
-    console.error("WebSocket connection upgrade failed: Origin not allowed");
-  }
-});
-
-server.listen(port, "0.0.0.0", () => {
+server.listen(port, () => {
   console.log(`Server listening at http://0.0.0.0:${port}`);
 });
