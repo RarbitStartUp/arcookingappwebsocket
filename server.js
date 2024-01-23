@@ -171,6 +171,7 @@ app.use(
       "https://rarbitarcookingapp.vercel.app",
       "https://www.rarbit.com",
       "https://rarbit.com",
+      "https://rarbit.tech",
       // ngrokOrigin,
     ],
     optionsSuccessStatus: 200,
@@ -267,6 +268,7 @@ server.on("upgrade", (request, ws, head) => {
     "https://rarbitarcookingapp.vercel.app",
     "https://www.rarbit.com",
     "https://rarbit.com",
+    "https://rarbit.tech",
     // ngrokOrigin,
   ];
   const origin = request.headers.origin;
