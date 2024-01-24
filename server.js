@@ -18,19 +18,18 @@ const __dirname = path.dirname(__filename);
 const io = new Server(server, {
   cors: {
     origin: [
-      "http://0.0.0.0:3000",
-      "http://0.0.0.0:3001",
       "http://localhost:3000",
-      "http://localhost:3001",
-      "http://127.0.0.1:8080",
-      "http://localhost:4040",
-      "http://localhost:443",
       "https://rarbitarcookingapp.vercel.app",
       "https://www.rarbit.com",
       "https://rarbit.com",
       "https://rarbit.tech",
-      // ngrokOrigin,
+      "http://0.0.0.0:3000",
+      "http://0.0.0.0:3001",
+      "http://127.0.0.1:8080",
+      "http://localhost:4040",
+      "http://localhost:443",
     ],
+    methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   },
 });
 
