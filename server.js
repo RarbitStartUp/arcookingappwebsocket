@@ -31,6 +31,8 @@ const io = new Server(server, {
     ],
     methods: ['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'],
   },
+  pingTimeout: 60000,  // Set the ping timeout to 60 seconds
+  pingInterval: 25000, // Set the ping interval to 25 seconds
 });
 
 const clients = new Set(); // Using a Set to store connected clients
