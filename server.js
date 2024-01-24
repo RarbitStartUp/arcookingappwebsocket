@@ -184,27 +184,6 @@ app.get("/api/checkedListAI.js", (req, res) => {
   });
 });
 
-// Expose an API endpoint for the client to interact with
-// app.post("/api/checkedListAI", async (req, res) => {
-//   try {
-//     // Extract jsonData and frames from the request
-//     const { jsonData, frames } = req.body;
-
-//     // Call checkedList function
-//     const content = await checkedListAI(jsonData, frames);
-
-//     // Send the content as the API response
-//     res.status(200).json({ content });
-//   } catch (error) {
-//     console.error("Error in checkedListAI API endpoint:", error);
-//     res.status(500).json({ error: "Internal Server Error" });
-//   }
-// });
-
-// server.listen(port,"0.0.0.0", () => {
-//   console.log(`Server listening at http://0.0.0.0:${port}`);
-// });
-
 server.listen(port, "0.0.0.0", () => {
   console.log(`Server listening at http://rarbit.tech:${port}`);
 });
