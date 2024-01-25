@@ -25,18 +25,6 @@ const port = process.env.PORT || 3001;
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
-const getNgrokSubdomain = async () => {
-  const response = await fetch("http://localhost:4040/api/tunnels");
-  const data = await response.json();
-  const tunnelUrl = data.tunnels[0].public_url;
-  const subdomain = tunnelUrl.replace("https://", "").split(".")[0];
-  return subdomain;
-};
-
-const subdomain = await getNgrokSubdomain();
-console.log("Ngrok Subdomain:", subdomain);
-const ngrokOrigin = `https://${subdomain}.ngrok-free.app`;
-
 // WebSocket server setup using 'ws'
 const wss = new WebSocketServer({ noServer: true });
 
@@ -155,25 +143,14 @@ app.use(
   cors({
     origin: [
       "http://localhost:3000",
-      "wss://rarbit.tech:3001",
-      "wss://rarbit.tech",
-      "https://rarbit.tech:3001",
-      "https://rarbit.tech",
-      "https://rabrit.tech",
       "http://localhost:3001",
       "https://rarbitarcookingapp.vercel.app",
       "https://rarbit.com",
       "https://www.rarbit.com",
       "http://18.222.93.182",
-      "http://18.222.93.182:3000",
+      "http://18.222.93.182:3001",
       "http://ec2-18-222-93-182.us-east-2.compute.amazonaws.com",
       "http://ec2-18-222-93-182.us-east-2.compute.amazonaws.com:3001",
-      "http://127.0.0.1:8080",
-      "http://localhost:4040",
-      "http://localhost:443",
-      "https://rarbit.tech",
-      "http://0.0.0.0:3000",
-      ngrokOrigin,
     ],
     optionsSuccessStatus: 200,
   })
@@ -260,21 +237,14 @@ app.post("/api/checkedListAI", async (req, res) => {
 server.on("upgrade", (request, socket, head) => {
   const allowedOrigins = [
     "http://localhost:3000",
-    "wss://rarbit.tech:3001",
-    "wss://rarbit.tech",
-    "https://rarbit.tech:3001",
-    "https://rarbit.tech",
     "http://localhost:3001",
     "https://rarbitarcookingapp.vercel.app",
+    "https://rarbit.com",
+    "https://www.rarbit.com",
     "http://18.222.93.182",
-    "http://18.222.93.182:3000",
+    "http://18.222.93.182:3001",
     "http://ec2-18-222-93-182.us-east-2.compute.amazonaws.com",
     "http://ec2-18-222-93-182.us-east-2.compute.amazonaws.com:3001",
-    "http://127.0.0.1:8080",
-    "http://localhost:4040",
-    "http://localhost:443",
-    "http://0.0.0.0:3000",
-    ngrokOrigin,
   ];
 
   // Allow all connections if the request doesn't have the Origin header
@@ -287,7 +257,8 @@ server.on("upgrade", (request, socket, head) => {
 
   const origin = request.headers.origin;
 
-  if (allowedOrigins.includes(origin) || allowedOrigins.includes(ngrokOrigin)) {
+  // if (allowedOrigins.includes(origin) || allowedOrigins.includes(ngrokOrigin)) {
+  if (allowedOrigins.includes(origin)) {
     wss.handleUpgrade(request, socket, head, (ws) => {
       wss.emit("connection", ws, request);
     });
