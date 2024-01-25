@@ -154,6 +154,12 @@ try{
 app.use(
   cors({
     origin: [
+      "http://localhost:3000",
+      "wss://rarbit.tech:3001",
+      "wss://rarbit.tech",
+      "https://rarbit.tech:3001",
+      "https://rarbit.tech",
+      "https://rabrit.tech",
       "http://localhost:3001",
       "https://rarbitarcookingapp.vercel.app",
       "https://rarbit.com",
@@ -166,7 +172,6 @@ app.use(
       "http://localhost:4040",
       "http://localhost:443",
       "https://rarbit.tech",
-      "http://localhost:3000",
       "http://0.0.0.0:3000",
       ngrokOrigin,
     ],
@@ -254,6 +259,11 @@ app.post("/api/checkedListAI", async (req, res) => {
 
 server.on("upgrade", (request, ws, head) => {
   const allowedOrigins = [
+    "http://localhost:3000",
+    "wss://rarbit.tech:3001",
+    "wss://rarbit.tech",
+    "https://rarbit.tech:3001",
+    "https://rarbit.tech",
     "http://localhost:3001",
     "https://rarbitarcookingapp.vercel.app",
     "http://18.222.93.182",
@@ -264,7 +274,6 @@ server.on("upgrade", (request, ws, head) => {
     "http://localhost:4040",
     "http://localhost:443",
     "http://0.0.0.0:3000",
-    "http://localhost:3000",
     ngrokOrigin,
   ];
   const origin = request.headers.origin;
