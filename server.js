@@ -154,14 +154,20 @@ try{
 app.use(
   cors({
     origin: [
-      "http://0.0.0.0:3000",
-      "http://localhost:3000",
       "http://localhost:3001",
+      "https://rarbitarcookingapp.vercel.app",
+      "https://rarbit.com",
+      "https://www.rarbit.com",
+      "http://18.222.93.182",
+      "http://18.222.93.182:3000",
+      "http://ec2-18-222-93-182.us-east-2.compute.amazonaws.com",
+      "http://ec2-18-222-93-182.us-east-2.compute.amazonaws.com:3001",
       "http://127.0.0.1:8080",
       "http://localhost:4040",
       "http://localhost:443",
-      "https://rarbitarcookingapp.vercel.app",
-      "https://www.rarbit.com",
+      "https://rarbit.tech",
+      "http://localhost:3000",
+      "http://0.0.0.0:3000",
       ngrokOrigin,
     ],
     optionsSuccessStatus: 200,
@@ -248,13 +254,17 @@ app.post("/api/checkedListAI", async (req, res) => {
 
 server.on("upgrade", (request, ws, head) => {
   const allowedOrigins = [
-    "http://0.0.0.0:3000",
-    "http://localhost:3000",
     "http://localhost:3001",
+    "https://rarbitarcookingapp.vercel.app",
+    "http://18.222.93.182",
+    "http://18.222.93.182:3000",
+    "http://ec2-18-222-93-182.us-east-2.compute.amazonaws.com",
+    "http://ec2-18-222-93-182.us-east-2.compute.amazonaws.com:3001",
     "http://127.0.0.1:8080",
     "http://localhost:4040",
     "http://localhost:443",
-    "https://rarbitarcookingapp.vercel.app",
+    "http://0.0.0.0:3000",
+    "http://localhost:3000",
     ngrokOrigin,
   ];
   const origin = request.headers.origin;
