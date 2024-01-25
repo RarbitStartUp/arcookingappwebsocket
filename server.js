@@ -257,7 +257,7 @@ app.post("/api/checkedListAI", async (req, res) => {
   }
 });
 
-server.on("upgrade", (request, ws, head) => {
+server.on("upgrade", (request, socket, head) => {
   const allowedOrigins = [
     "http://localhost:3000",
     "wss://rarbit.tech:3001",
@@ -276,18 +276,27 @@ server.on("upgrade", (request, ws, head) => {
     "http://0.0.0.0:3000",
     ngrokOrigin,
   ];
+
+  // Allow all connections if the request doesn't have the Origin header
+  if (!request.headers.origin) {
+    wss.handleUpgrade(request, socket, head, (ws) => {
+      wss.emit("connection", ws, request);
+    });
+    return;
+  }
+
   const origin = request.headers.origin;
 
   if (allowedOrigins.includes(origin) || allowedOrigins.includes(ngrokOrigin)) {
-  // if (allowedOrigins.includes(origin)) {
-    wss.handleUpgrade(request, ws, head, (ws) => {
+    wss.handleUpgrade(request, socket, head, (ws) => {
       wss.emit("connection", ws, request);
     });
   } else {
-    ws.destroy();
+    socket.destroy();
     console.error("WebSocket connection upgrade failed: Origin not allowed");
   }
 });
+
 
 server.listen(port, "0.0.0.0", () => {
   console.log(`Server listening at http://0.0.0.0:${port}`);
