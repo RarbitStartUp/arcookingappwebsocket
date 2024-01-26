@@ -142,6 +142,7 @@ try{
 app.use(
   cors({
     origin: [
+      "https://rarbit.tech",
       "http://0.0.0.0:3001",
       "http://localhost:3000",
       "http://localhost:3001",
@@ -239,6 +240,7 @@ app.post("/api/checkedListAI", async (req, res) => {
 
 server.on("upgrade", (request, socket, head) => {
   const allowedOrigins = [
+    "https://rarbit.tech",
     "http://0.0.0.0:3001",
     "http://localhost:3000",
     "http://localhost:3001",
