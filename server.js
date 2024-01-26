@@ -142,13 +142,13 @@ try{
 app.use(
   cors({
     origin: [
+      "https://rarbit.com",
+      "https://www.rarbit.com",
       "https://rarbit.tech",
       "http://0.0.0.0:3001",
       "http://localhost:3000",
       "http://localhost:3001",
       "https://rarbitarcookingapp.vercel.app",
-      "https://rarbit.com",
-      "https://www.rarbit.com",
       "https://rarbit.com:3001",
       "http://rarbit.com:3001",
       "http://18.222.93.182",
@@ -240,13 +240,13 @@ app.post("/api/checkedListAI", async (req, res) => {
 
 server.on("upgrade", (request, socket, head) => {
   const allowedOrigins = [
+    "https://rarbit.com",
+    "https://www.rarbit.com",
     "https://rarbit.tech",
     "http://0.0.0.0:3001",
     "http://localhost:3000",
     "http://localhost:3001",
     "https://rarbitarcookingapp.vercel.app",
-    "https://rarbit.com",
-    "https://www.rarbit.com",
     "https://rarbit.com:3001",
     "http://rarbit.com:3001",
     "http://18.222.93.182",
