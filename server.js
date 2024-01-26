@@ -256,12 +256,12 @@ server.on("upgrade", (request, socket, head) => {
   ];
 
   // Allow all connections if the request doesn't have the Origin header
-  if (!request.headers.origin) {
-    wss.handleUpgrade(request, socket, head, (ws) => {
-      wss.emit("connection", ws, request);
-    });
-    return;
-  }
+  // if (!request.headers.origin) {
+  //   wss.handleUpgrade(request, socket, head, (ws) => {
+  //     wss.emit("connection", ws, request);
+  //   });
+  //   return;
+  // }
 
   const origin = request.headers.origin;
 
