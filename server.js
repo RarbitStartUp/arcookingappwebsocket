@@ -142,6 +142,7 @@ try{
 app.use(
   cors({
     origin: [
+      "http://0.0.0.0:3001",
       "http://localhost:3000",
       "http://localhost:3001",
       "https://rarbitarcookingapp.vercel.app",
@@ -238,6 +239,7 @@ app.post("/api/checkedListAI", async (req, res) => {
 
 server.on("upgrade", (request, socket, head) => {
   const allowedOrigins = [
+    "http://0.0.0.0:3001",
     "http://localhost:3000",
     "http://localhost:3001",
     "https://rarbitarcookingapp.vercel.app",
