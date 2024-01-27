@@ -265,13 +265,14 @@ server.on("upgrade", (request, socket, head) => {
 
   const origin = request.headers.origin;
 
-  if (origin && allowedOrigins.some(allowedOrigin => origin.startsWith(allowedOrigin))) {
-    wss.handleUpgrade(request, socket, head, (ws) => {
-      wss.emit("connection", ws, request);
-    });
-  } else {
-    socket.destroy();
-    console.error("WebSocket connection upgrade failed: Origin not allowed");
+  if (origin) {
+    const requestHost = new URL(origin).host;
+    if (allowedOrigins.some(allowedOrigin => allowedOrigin.includes(requestHost))) {
+      wss.handleUpgrade(request, socket, head, (ws) => {
+        wss.emit("connection", ws, request);
+      });
+      return;
+    }
   }
 });
 
