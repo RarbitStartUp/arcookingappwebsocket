@@ -265,8 +265,7 @@ server.on("upgrade", (request, socket, head) => {
 
   const origin = request.headers.origin;
 
-  // if (allowedOrigins.includes(origin) || allowedOrigins.includes(ngrokOrigin)) {
-  if (allowedOrigins.includes(origin)) {
+  if (origin && allowedOrigins.some(allowedOrigin => origin.startsWith(allowedOrigin))) {
     wss.handleUpgrade(request, socket, head, (ws) => {
       wss.emit("connection", ws, request);
     });
@@ -275,7 +274,6 @@ server.on("upgrade", (request, socket, head) => {
     console.error("WebSocket connection upgrade failed: Origin not allowed");
   }
 });
-
 
 server.listen(port, "0.0.0.0", () => {
   console.log(`Server listening at http://0.0.0.0:${port}`);
