@@ -4,9 +4,9 @@ import { GoogleAuth } from 'google-auth-library';
 import { Storage } from "@google-cloud/storage";
 import sharp from 'sharp';
 
-const credential = JSON.parse(
-  Buffer.from(process.env.GOOGLE_SERVICE_KEY.replace(/"/g, ""), "base64").toString().replace(/\n/g,"")
-)
+// const credential = JSON.parse(
+//   Buffer.from(process.env.GOOGLE_SERVICE_KEY.replace(/"/g, ""), "base64").toString().replace(/\n/g,"")
+// )
 // Use the default authentication provided by google-auth-library
 const auth = new GoogleAuth({
   keyFilename: "google_service_key.json", // Load the key file from the environment variable
@@ -40,16 +40,17 @@ console.log("credentials:", credentials);
 
 const project = "arcookingapp";
 const location = "us-central1"; 
-const vertex_ai = new VertexAI({ project, location, credentials});
+const vertex_ai = new VertexAI({ project, location});
 console.log("vertex_ai :",vertex_ai)
 
 const projectId = "arcookingapp";
 const storageClient = new Storage({
   projectId,
-  credentials: {
-    client_email: credential.client_email,
-    private_key: credential.private_key,
-  },
+  keyFilename: "google_service_key.json",
+  // credentials: {
+  //   client_email: credential.client_email,
+  //   private_key: credential.private_key,
+  // },
 });
 const bucketName = "rarbit_livestream";
 
