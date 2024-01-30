@@ -1,17 +1,56 @@
 // checkedListAI.js (server-side logic for processing checked lists)
-
 import { VertexAI } from "@google-cloud/vertexai";
+import { GoogleAuth } from 'google-auth-library';
 import { Storage } from "@google-cloud/storage";
-import fs from 'fs/promises';
 import sharp from 'sharp';
-import path from 'path';
-import { fileURLToPath } from 'url';
+
+const credential = JSON.parse(
+  Buffer.from(process.env.GOOGLE_SERVICE_KEY.replace(/"/g, ""), "base64").toString().replace(/\n/g,"")
+)
+// Use the default authentication provided by google-auth-library
+const auth = new GoogleAuth({
+  keyFilename: "google_service_key.json", // Load the key file from the environment variable
+  scopes: ['https://www.googleapis.com/auth/cloud-platform'], 
+});
+console.log("auth:", auth);
+const authClient = await auth.getClient();
+console.log("authClient:", authClient);
+
+async function getCredentials(authClient) {
+  // Fetch the credentials using the auth client
+  return new Promise((resolve, reject) => {
+    authClient.getAccessToken().then(
+      (response) => {
+        // Extract the access token from the response
+        const accessToken = response.token;
+        // Create a simple object with the access token
+        const credentials = { access_token: accessToken };
+        resolve(credentials);
+      },
+      (error) => {
+        reject(error);
+      }
+    );
+  });
+}
+
+// Get the credentials from the auth client
+const credentials = await getCredentials(authClient);
+console.log("credentials:", credentials);
 
 const project = "arcookingapp";
-const location = "us-central1";
-const vertex_ai = new VertexAI({ project, location });
+const location = "us-central1"; 
+const vertex_ai = new VertexAI({ project, location, credentials});
+console.log("vertex_ai :",vertex_ai)
 
-const storage = new Storage();
+const projectId = "arcookingapp";
+const storageClient = new Storage({
+  projectId,
+  credentials: {
+    client_email: credential.client_email,
+    private_key: credential.private_key,
+  },
+});
 const bucketName = "rarbit_livestream";
 
 const generativeVisionModel = vertex_ai.preview.getGenerativeModel({
@@ -26,7 +65,7 @@ export async function checkedListAI(jsonData, frames) {
     console.log("userCheckList:", userCheckList);
 
     let fileUri = "";
-    const bucket = storage.bucket(bucketName);
+    const bucket = storageClient.bucket(bucketName);
 
     // Add a delay function to pause execution for a specified time
 function delay(ms) {
