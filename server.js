@@ -222,10 +222,10 @@ app.get("/api/checkedListAI.js", (req, res) => {
 });
 
 // Define the path to your JavaScript file
-const googleServiceAccountKeyFilePath = path.join(__dirname, "lib", "getGoogleServiceAccountKey.js");
+const googleServiceAccountKeyFilePath = path.join(__dirname, "/api/getGoogleServiceAccountKey.js");
 
 // Serve getGoogleServiceAccountKey.js with the correct Content-Type
-app.get("/lib/getGoogleServiceAccountKey.js", (req, res) => {
+app.get("/api/getGoogleServiceAccountKey.js", (req, res) => {
   res.setHeader("Content-Type", "application/javascript");
 
   // Send the file
