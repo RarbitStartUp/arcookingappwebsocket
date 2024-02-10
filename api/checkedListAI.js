@@ -3,7 +3,7 @@ import { VertexAI } from "@google-cloud/vertexai";
 import { GoogleAuth } from 'google-auth-library';
 import { Storage } from "@google-cloud/storage";
 import sharp from 'sharp';
-import { getGoogleServiceAccountKey } from "../lib/getGoogleServiceAccountKey"
+import { getGoogleServiceAccountKey } from "./getGoogleServiceAccountKey"
 
 const secret = await getGoogleServiceAccountKey();
 console.log("secret:",secret);
