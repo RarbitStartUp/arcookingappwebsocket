@@ -1,9 +1,7 @@
 // checkedListAI.js (server-side logic for processing checked lists)
 import { VertexAI } from "@google-cloud/vertexai";
-import { GoogleAuth } from 'google-auth-library';
 import { Storage } from "@google-cloud/storage";
 import sharp from 'sharp';
-import { getGoogleServiceAccountKey } from "./getGoogleServiceAccountKey"
 
 const secret = await getGoogleServiceAccountKey();
 console.log("secret:",secret);
@@ -20,16 +18,6 @@ const authOptions = {
 }
 
 console.log("authOptions:", authOptions);
-// const googleAuth = new GoogleAuth({
-//   // credentials : credential,
-//   credentials : secret,
-//   // keyFilename: "google_service_key.json", // Load the key file from the environment variable
-//   scopes: [
-//   'https://www.googleapis.com/auth/cloud-platform',
-//   'https://www.googleapis.com/auth/aiplatform',
-//   'https://www.googleapis.com/auth/aiplatform.jobs',
-// ], 
-//   });
 
   const vertex_ai = new VertexAI({ 
     project: "arcookingapp", 
@@ -152,4 +140,22 @@ function delay(ms) {
       }
     }
   });
+}
+
+async function getGoogleServiceAccountKey() {
+  const secretName = "google_service_key.json";
+  const client = new SecretsManagerClient({ region: "us-east-2" });
+  
+  try {
+    const response = await client.send(
+      new GetSecretValueCommand({
+        SecretId: secretName,
+        VersionStage: "AWSCURRENT"
+      })
+    );
+    return response.SecretString;
+  } catch (error) {
+    console.error("Error retrieving secret:", error);
+    throw error;
+  }
 }

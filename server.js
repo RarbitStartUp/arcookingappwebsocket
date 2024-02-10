@@ -221,22 +221,6 @@ app.get("/api/checkedListAI.js", (req, res) => {
   });
 });
 
-// Define the path to your JavaScript file
-const googleServiceAccountKeyFilePath = path.join(__dirname, "api", "getGoogleServiceAccountKey.js");
-
-// Serve getGoogleServiceAccountKey.js with the correct Content-Type
-app.get("/api/getGoogleServiceAccountKey.js", (req, res) => {
-  res.setHeader("Content-Type", "application/javascript");
-
-  // Send the file
-  res.sendFile(googleServiceAccountKeyFilePath, (err) => {
-    if (err) {
-      console.error("Error sending getGoogleServiceAccountKey.js:", err);
-      res.status(500).send("Internal Server Error");
-    }
-  });
-});
-
 // Expose an API endpoint for the client to interact with
 app.post("/api/checkedListAI", async (req, res) => {
   try {
