@@ -3,55 +3,45 @@ import { VertexAI } from "@google-cloud/vertexai";
 import { GoogleAuth } from 'google-auth-library';
 import { Storage } from "@google-cloud/storage";
 import sharp from 'sharp';
+import { getGoogleServiceAccountKey } from "../lib/getGoogleServiceAccountKey"
 
+const secret = await getGoogleServiceAccountKey();
+console.log("secret:",secret);
 // const credential = JSON.parse(
 //   Buffer.from(process.env.GOOGLE_SERVICE_KEY.replace(/"/g, ""), "base64").toString().replace(/\n/g,"")
 // )
-// Use the default authentication provided by google-auth-library
-const auth = new GoogleAuth({
-  keyFilename: "google_service_key.json", // Load the key file from the environment variable
-  scopes: ['https://www.googleapis.com/auth/cloud-platform'], 
-});
-console.log("auth:", auth);
-const authClient = await auth.getClient();
-console.log("authClient:", authClient);
+const { client_email, private_key } = JSON.parse(secret);
 
-async function getCredentials(authClient) {
-  // Fetch the credentials using the auth client
-  return new Promise((resolve, reject) => {
-    authClient.getAccessToken().then(
-      (response) => {
-        // Extract the access token from the response
-        const accessToken = response.token;
-        // Create a simple object with the access token
-        const credentials = { access_token: accessToken };
-        resolve(credentials);
-      },
-      (error) => {
-        reject(error);
-      }
-    );
-  });
+const authOptions = {
+  credentials: {
+    client_email,
+    private_key
+  }
 }
 
-// Get the credentials from the auth client
-const credentials = await getCredentials(authClient);
-console.log("credentials:", credentials);
+console.log("authOptions:", authOptions);
+// const googleAuth = new GoogleAuth({
+//   // credentials : credential,
+//   credentials : secret,
+//   // keyFilename: "google_service_key.json", // Load the key file from the environment variable
+//   scopes: [
+//   'https://www.googleapis.com/auth/cloud-platform',
+//   'https://www.googleapis.com/auth/aiplatform',
+//   'https://www.googleapis.com/auth/aiplatform.jobs',
+// ], 
+//   });
 
-const project = "arcookingapp";
-const location = "us-central1"; 
-const vertex_ai = new VertexAI({ project, location});
+  const vertex_ai = new VertexAI({ 
+    project: "arcookingapp", 
+    location: "us-central1",
+    // apiEndpoint : "us-central1-aiplatform.googleapis.com/v1/projects/arcookingapp/locations/us-central1/publishers/google/models/gemini-pro-vision:streamGenerateContent",
+    apiEndpoint : "us-central1-aiplatform.googleapis.com",
+    googleAuthOptions: authOptions,
+  });
 console.log("vertex_ai :",vertex_ai)
 
 const projectId = "arcookingapp";
-const storageClient = new Storage({
-  projectId,
-  keyFilename: "google_service_key.json",
-  // credentials: {
-  //   client_email: credential.client_email,
-  //   private_key: credential.private_key,
-  // },
-});
+const storageClient = new Storage(secret);
 const bucketName = "rarbit_livestream";
 
 const generativeVisionModel = vertex_ai.preview.getGenerativeModel({
