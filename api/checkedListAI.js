@@ -1,6 +1,7 @@
 // checkedListAI.js (server-side logic for processing checked lists)
 import { VertexAI } from "@google-cloud/vertexai";
 import { Storage } from "@google-cloud/storage";
+import { SecretsManagerClient, GetSecretValueCommand } from "@aws-sdk/client-secrets-manager";
 import sharp from 'sharp';
 
 const secret = await getGoogleServiceAccountKey();
