@@ -29,9 +29,9 @@ console.log("authOptions:", authOptions);
   });
 console.log("vertex_ai :",vertex_ai)
 
-const projectId = "arcookingapp";
-const storageClient = new Storage(secret);
-const bucketName = "rarbit_livestream";
+// const projectId = "arcookingapp";
+// const storageClient = new Storage(secret);
+// const bucketName = "rarbit_livestream";
 
 const generativeVisionModel = vertex_ai.preview.getGenerativeModel({
   model: "gemini-pro-vision",
@@ -54,7 +54,7 @@ function delay(ms) {
 
     try {
       if (frames.length === 0) {
-        console.error('No frames to save.');
+        console.error('No frames');
       } else {
         for (let i = 0; i < frames.length; i++) {
           const pixels = frames[i].flat().map(value => Array.isArray(value) ? value.flat().map(Number) : Number(value));
