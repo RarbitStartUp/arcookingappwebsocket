@@ -44,8 +44,8 @@ export async function checkedListAI(jsonData, frames) {
     const userCheckList = JSON.stringify(jsonData);
     console.log("userCheckList:", userCheckList);
 
-    let fileUri = "";
-    const bucket = storageClient.bucket(bucketName);
+    // let fileUri = "";
+    // const bucket = storageClient.bucket(bucketName);
 
     // Add a delay function to pause execution for a specified time
 function delay(ms) {
@@ -62,27 +62,38 @@ function delay(ms) {
           const flattenedPixels = roundedPixels.flat();
           const clampedPixels = flattenedPixels.map(value => Math.max(0, Math.min(255, value)));
           const buffer = Buffer.from(clampedPixels);
-          const width = 224;
-          const height = 224;
-          const jpegBuffer = await sharp(buffer, { raw: { width, height, channels: 3 } }).toFormat('jpeg').toBuffer();
-          const destination = `received_image_${i + 1}.jpg`;
-          const file = bucket.file(destination);
+          console.log("buffer:", buffer);
 
-          await file.save(jpegBuffer, {
-            metadata: {
-              contentType: 'image/jpeg',
-            },
-          });
+          const base64Data = buffer.toString('base64');
+          console.log("Base64 encoded data:", base64Data);
 
-          fileUri = `gs://${bucketName}/${destination}`;
-          console.log("fileUri inside scope :", fileUri);
+          // const width = 224;
+          // const height = 224;
+          // const jpegBuffer = await sharp(buffer, { raw: { width, height, channels: 3 } }).toFormat('jpeg').toBuffer();
+          // const destination = `received_image_${i + 1}.jpg`;
+          // const file = bucket.file(destination);
+
+          // await file.save(jpegBuffer, {
+          //   metadata: {
+          //     contentType: 'image/jpeg',
+          //   },
+          // });
+
+          // fileUri = `gs://${bucketName}/${destination}`;
+          // console.log("fileUri inside scope :", fileUri);
         }
 
-        console.log("fileUri outside scope :", fileUri);
+        // console.log("fileUri outside scope :", fileUri);
 
+        // const filePart = {
+        //   file_data: {
+        //     file_uri: fileUri,
+        //     mime_type: "image/jpeg",
+        //   },
+        // };
         const filePart = {
-          file_data: {
-            file_uri: fileUri,
+          inline_data: {
+            data: base64Data,
             mime_type: "image/jpeg",
           },
         };
