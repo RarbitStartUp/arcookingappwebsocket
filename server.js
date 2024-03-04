@@ -40,8 +40,10 @@ wss.on("connection", (ws) => {
   // Define variables to track incoming data
 let jsonDataReceived = false;
 let framesReceived = 0;
+let framesBatch = [];
 let frames;
 let jsonData;
+
   console.log("WebSocket connection opened in server.js");
 
   ws.on("message", async (message) => {
@@ -50,7 +52,7 @@ let jsonData;
     // Check if the message is valid JSON before parsing
     try {
       const data = JSON.parse(message);
-      console.log("data :", data)
+      // console.log("data :", data)
 
       // Handle the parsed data based on its structure
       if (data.type === "ping") {
@@ -69,51 +71,217 @@ let jsonData;
           console.error("Error handling jsonData:", error);
         }
       } else if (data.type === "frames") {
+        try {
         // Handle live stream frames
-        console.log("data.frames :", data.frames)
+        // console.log("data.frames :", data.frames)
         frames = data.frames;
+        framesBatch.push(frames);
+        // console.log("framesBatch:",framesBatch);
         framesReceived++;
         console.log("jsonDataReceived:", jsonDataReceived);
         console.log("framesReceived:", framesReceived);
-
-        // if (jsonDataReceived && framesReceived === 1 ) {
-          if ( jsonDataReceived && framesReceived > 0 && framesReceived <= 16 ) {
-          // Both jsonData and at least one frame received, trigger checkedListAI
-
-          // Log the data being sent to the AI API endpoint
-          console.log("Sending data to AI API endpoint:", { jsonData, frames });
-          const content = await checkedListAI(jsonData, frames);
-try{
-
-  // Log the data being sent to the AI API endpoint
-  console.log("content - AI result returned from AI API endpoint :", content );
-  
-  const aiResult = content.parts[0].text;
-  console.log("aiResult before ws send to client :", aiResult);
-  // Send the content to all connected WebSocket clients
-  clients.forEach((client) => {
-    if (client.readyState === WebSocket.OPEN) {
-      client.send(aiResult);
-    }
-  });
-  
-  console.log("aiResult already sent to client.");
-  // Reset flags after processing
-  // jsonDataReceived = false;
-  framesReceived = 0;
-}catch (error) {
-  console.error("Error processing frames asynchronously:", error);
-}
-          // jsonData = null;
+        } catch (error) {
+          console.error("Error handling frames:", error);
         }
-      } else {
-        // Handle other types of messages
+      } else if (data.type === "stopRetryFrames") {
+        try{
+          let stopRetryFrames = true; // Define stopRetryFrames locally
+          await checkedListAI(jsonData, [], stopRetryFrames);
+          console.log("Received stopRetryFrames message. Stopping retry frames.");
+        } catch (error) {
+          console.error("Error handling stopRetryFrames:", error);
+        }
       }
+
+        // Create a promise queue
+        const queue = [];
+
+        // Define variables to track rate limiting
+        let requestCount = 0;
+        let lastResetTime = Date.now();
+
+        // Function to check if the rate limit has been reached
+        function isRateLimitReached() {
+            // Get the current time
+            const currentTime = Date.now();
+
+            // Check if a minute has passed since the last reset
+            if (currentTime - lastResetTime >= 60000) { // 60000 milliseconds = 1 minute
+                // Reset the request count and update the last reset time
+                requestCount = 0;
+                lastResetTime = currentTime;
+            }
+
+            // Check if the request count exceeds the limit
+            return requestCount >= 60; // 60 requests per minute
+        }
+
+        // Function to make a request
+        async function makeRequest(jsonData, batchFrames,stopRetryFrames) {
+            // Check if the rate limit has been reached
+            if (isRateLimitReached()) {
+                console.log("Rate limit reached. Please wait before making more requests.");
+                return;
+            }
+
+            // Increment the request count
+            requestCount++;
+
+            // Proceed with making the request
+            try {
+                // Your request logic here
+                console.log("Request successful in server.js.");
+                // Call the function to process the batch
+                await processBatch(jsonData, batchFrames, stopRetryFrames);
+            } catch (error) {
+                console.error("Error making request:", error);
+            }
+        }
+
+        // Define stopRetryFrames in the scope where processData is defined
+        let stopRetryFrames = false;
+
+        // This function continuously checks for new data and processes it if conditions are met
+        function processData() {
+          // Check if jsonData is received and framesBatch has at least one frame
+          if (jsonDataReceived && framesBatch.length >3) {
+            // Calculate the number of frames to process in the batch
+            const batchSize = Math.min(framesBatch.length, 3);
+            // console.log("batchSize:",batchSize);
+            // Process frames in batches of 16
+            // const batchFrames = framesBatch.splice(0, 16); // Extract first 16 frames
+            // const batchFrames = framesBatch.splice(0, 16); // Extract first 16 frames
+            const batchFrames = framesBatch.splice(0, batchSize); // Extract first 16 frames
+            // console.log("batchFrames:",batchFrames); //you will log may frames array, so I comment out
+            try {
+                // Call the function to process the batch
+                // processBatch(jsonData, batchFrames);
+                // Make a request to process the batch
+                makeRequest(jsonData, batchFrames,stopRetryFrames=false);
+            } catch (error) {
+                console.error('Error processing frames batch:', error);
+                // Handle the error as needed (e.g., logging, notifying the user)
+            }
+          }
+        }
+        // Call this function again after a delay to continuously check for new data
+        //  setTimeout(processData, 1000); // Adjust the delay as needed
+
+        // // Start the process
+        // processData();
+        // Set a timer to process frames every second
+        setInterval(processData, 1000);
+
+        //If you want to continuously check for new data every second, 
+        //you should use setInterval. 
+        //If you only want to check for new data once every second,
+        //you should use setTimeout.
+
+        async function processBatch(jsonData, batchFrames, stopRetryFrames) {
+            // Add a promise to the queue
+            const promise = new Promise(async (resolve, reject) => {
+                try {
+                    const fullChecklist = await checkedListAI(jsonData, batchFrames, stopRetryFrames);
+                    // Resolve the promise with the result
+                    resolve(fullChecklist);
+                } catch (error) {
+                    // Reject the promise with the error
+                    reject(error);
+                } finally {
+                  // Remove the processed frames from the framesBatch array
+                  const index = framesBatch.indexOf(batchFrames);
+                  if (index !== -1) {
+                      framesBatch.splice(index, 1);
+                  }
+              }
+            });
+
+            // Add the promise to the queue
+            queue.push(promise);
+
+            // If this is the only promise in the queue, process it immediately
+            if (queue.length === 1) {
+                processNextBatch();
+            }
+        }
+
+        async function processNextBatch() {
+            // If there are no promises in the queue, return
+            if (queue.length === 0) {
+                return;
+            }
+
+            // Get the first promise from the queue
+            const promise = queue[0];
+
+            try {
+                // Wait for the promise to resolve
+                const fullChecklist = await promise;
+                const fullChecklistString = JSON.stringify(fullChecklist);
+                console.log("fullChecklistString in server.js :", fullChecklistString);
+                
+                // Log the data being sent to the AI API endpoint
+                console.log("fullChecklistString before ws send to client :", fullChecklistString);
+                // Send the content to all connected WebSocket clients
+                clients.forEach((client) => {
+                    if (client.readyState === WebSocket.OPEN) {
+                        client.send(fullChecklistString);
+                    }
+                });      
+                console.log("fullChecklistString already sent to client.");
+
+                // Reset flags after processing
+                queue.shift(); // Remove the processed promise from the queue
+                processNextBatch(); // Process the next batch
+            } catch (error) {
+                console.error("Error processing frames asynchronously:", error);
+                // Remove the failed promise from the queue and process the next batch
+                queue.shift();
+                processNextBatch();
+            }
+        }
+
+      //  // Check if jsonData is received and framesBatch has at least one frame
+      // if (jsonDataReceived && framesBatch.length > 16) {
+      //   // Process frames in batches of 16
+        
+      //     const batchFrames = framesBatch.splice(0, 16); // Extract first 16 frames
+      //     // console.log("batchFrames:",batchFrames);
+          
+      //     // Both jsonData and at least one frame received, trigger checkedListAI
+      //     // Log the data being sent to the AI API endpoint
+      //     console.log("Sending data to AI API endpoint:", { jsonData, batchFrames });
+      //     const fullChecklist = await checkedListAI(jsonData, batchFrames);
+      //     console.log("fullChecklist in server.js :", fullChecklist);
+      //     const fullChecklistString = JSON.stringify(fullChecklist);
+      //     console.log("fullChecklistString in server.js :", fullChecklistString);
+      //         try{
+      //           // Log the data being sent to the AI API endpoint
+      //           console.log("fullChecklistString before ws send to client :", fullChecklistString);
+      //           // Send the content to all connected WebSocket clients
+      //           clients.forEach((client) => {
+      //             if (client.readyState === WebSocket.OPEN) {
+      //               client.send(fullChecklistString);
+      //             }
+      //           });      
+      //           console.log("fullChecklistString already sent to client.");
+      //           // Reset flags after processing
+      //           // jsonDataReceived = false;
+      //           framesBatch = []; // Reset frames batch
+      //           framesReceived = 0;
+      //         }catch (error) {
+      //           console.error("Error processing frames asynchronously:", error);
+      //         }
+          // jsonData = null;
+        
+      // } else {
+      //   // Handle other types of messages
+      // }
     } catch (error) {
       console.error("Error parsing WebSocket message:", error);
       // Handle the error, e.g., display an error message to the user
-    }
-  });
+    } 
+});
 
   ws.on("close", (code, reason) => {
     console.log(`WebSocket closed with code: ${code}, reason: ${reason}`);
