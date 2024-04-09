@@ -1,0 +1,19 @@
+ const prompt = `
+          You are an action detection AI, 
+          check if the objects and actions in the user's JSON checklist are detected in the live stream from the camera,
+          User's JSON CheckList :
+          ( only check the objects and actions marked "true", you don't need to check the objects and actions marked false )
+          ${userCheckList}
+
+          and return the new checklist below JSON format :
+          {
+            checklist: {
+              objects:{
+                "objects": true | false
+              },
+              actions:{
+                "actions": true | false
+              }
+            },
+          }
+        `;

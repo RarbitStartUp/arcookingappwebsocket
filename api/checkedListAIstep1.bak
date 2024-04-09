@@ -1,0 +1,187 @@
+// checkedListAI.js (server-side logic for processing checked lists)
+import { VertexAI } from "@google-cloud/vertexai";
+import { Storage } from "@google-cloud/storage";
+import { SecretsManagerClient, GetSecretValueCommand } from "@aws-sdk/client-secrets-manager";
+import sharp from 'sharp';
+
+const secret = await getGoogleServiceAccountKey();
+console.log("secret:", secret);
+const { client_email, private_key } = JSON.parse(secret);
+
+const authOptions = {
+  credentials: {
+    client_email,
+    private_key
+  }
+}
+
+console.log("authOptions:", authOptions);
+
+const vertex_ai = new VertexAI({
+  project: "arcookingapp",
+  location: "us-central1",
+  apiEndpoint: "us-central1-aiplatform.googleapis.com",
+  googleAuthOptions: authOptions,
+});
+console.log("vertex_ai :", vertex_ai)
+
+const credentials = {
+  client_email,
+  private_key,
+};
+
+const storageClient = new Storage({
+  projectId: "arcookingapp",
+  credentials: credentials
+});
+const bucketName = "rarbit_livestream";
+
+const generativeVisionModel = vertex_ai.preview.getGenerativeModel({
+  model: "gemini-pro-vision",
+});
+
+export async function checkedListAI(jsonData, batchFrames) {
+  return new Promise(async (resolve, reject) => {
+    console.log("Entering checkedListAI function");
+
+    let fileUri = "";
+    const bucket = storageClient.bucket(bucketName);
+
+    try {
+      if (batchFrames.length === 0) {
+        console.error('No frames');
+        return reject(new Error('No frames'));
+      }
+
+      for (let stepIndex = 0; stepIndex < jsonData.length; stepIndex++) {
+        const stepData = jsonData[stepIndex];
+        const timestamp = stepData.timestamp;
+        const checklist = stepData.checklist;
+
+        console.log(`Processing Step ${stepIndex + 1} at timestamp ${timestamp}`);
+
+        let objectsDetected = false;
+        let actionsDetected = false;
+
+        for (let i = 0; i < batchFrames.length; i++) {
+          const pixels = batchFrames[i].flat().map(value => Array.isArray(value) ? value.flat().map(Number) : Number(value));
+          const roundedPixels = pixels.map(channelValues => channelValues.map(value => Math.round(value)));
+          const flattenedPixels = roundedPixels.flat();
+          const clampedPixels = flattenedPixels.map(value => Math.max(0, Math.min(255, value)));
+          const buffer = Buffer.from(clampedPixels);
+          // console.log("buffer:", buffer);
+
+          // base64Data = buffer.toString('base64');
+          // console.log("Base64 encoded data:", base64Data);
+
+          const width = 224;
+          const height = 224;
+          const jpegBuffer = await sharp(buffer, { raw: { width, height, channels: 3 } }).toFormat('jpeg').toBuffer();
+          const destination = `received_image_${i + 1}.jpg`;
+          const file = bucket.file(destination);
+
+          await file.save(jpegBuffer, {
+            metadata: {
+              contentType: 'image/jpeg',
+            },
+          });
+
+          fileUri = `gs://${bucketName}/${destination}`;
+          console.log("fileUri inside scope :", fileUri);
+
+          const filePart = {
+            file_data: {
+              file_uri: fileUri,
+              mime_type: "image/jpeg",
+            },
+          };
+          // const filePart = {
+          //   inline_data: {
+          //     data: base64Data,
+          //     mime_type: "image/jpeg",
+          //   },
+          // };
+
+          const prompt = `
+          You are an action detection AI, 
+          check if the objects and actions in the user's JSON checklist are detected in the live stream from the camera,
+          User's JSON CheckList :
+          ( only check the objects and actions marked "true", you don't need to check the objects and actions marked false )
+          ${JSON.stringify(stepData)}
+
+          and return the new checklist below JSON format :
+          {
+            checklist: {
+              objects:{
+                "objects": true | false
+              },
+              actions:{
+                "actions": true | false
+              }
+            },
+          }
+        `;
+
+          const textPart = { text: prompt };
+          const request = {
+            contents: [{ role: "user", parts: [textPart, filePart] }],
+          };
+
+          console.log("Request object:", request);
+          console.log("Contents parts:", request.contents[0].parts);
+
+          console.log("Before generativeVisionModel.generateContentStream");
+
+          // Introduce a delay (e.g., 1000 milliseconds) to avoid rate limits
+          // await delay(1000);
+
+          const streamingResp = await generativeVisionModel.generateContentStream(request);
+          console.log("streamingResp:", streamingResp);
+          console.log("After generativeVisionModel.generateContentStream");
+
+          const aggregatedResponse = await streamingResp.response;
+
+          console.log("aggregatedResponse:",aggregatedResponse);
+          console.log("After awaiting response from AI API");
+          const response = aggregatedResponse.candidates[0].content.parts[0].text;
+          const aiResult = JSON.parse(response);
+          console.log("aiResult:",aiResult);
+
+          // Check if all objects and actions are detected
+          if (aiResult.checklist.objects && aiResult.checklist.actions) {
+              console.log(`Step ${stepIndex + 1} detected successfully`);
+              resolve(aiResult);
+          } else {
+            console.log(`Objects or actions missing in Step ${stepIndex + 1}`);
+            return reject(new Error(`Objects or actions missing in Step ${stepIndex + 1}`));
+          }
+        }
+      }
+    } catch (error) {
+      console.error("Error in object and action detection:", error);
+      reject(error);
+    }
+  });
+}
+
+function delay(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+  }  
+
+async function getGoogleServiceAccountKey() {
+  const secretName = "google_service_key.json";
+  const client = new SecretsManagerClient({ region: "us-east-2" });
+
+  try {
+    const response = await client.send(
+      new GetSecretValueCommand({
+        SecretId: secretName,
+        VersionStage: "AWSCURRENT"
+      })
+    );
+    return response.SecretString;
+  } catch (error) {
+    console.error("Error retrieving secret:", error);
+    throw error;
+  }
+}

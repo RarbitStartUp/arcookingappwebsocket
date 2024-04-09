@@ -1,159 +1,183 @@
 // checkedListAI.js (server-side logic for processing checked lists)
-
 import { VertexAI } from "@google-cloud/vertexai";
+import { Storage } from "@google-cloud/storage";
+import { SecretsManagerClient, GetSecretValueCommand } from "@aws-sdk/client-secrets-manager";
 import sharp from 'sharp';
-import fs from 'fs';
 
-const project = "arcookingapp";
-const location = "us-central1";
-const vertex_ai = new VertexAI({ project, location });
+const secret = await getGoogleServiceAccountKey();
+console.log("secret:",secret);
+// const credential = JSON.parse(
+//   Buffer.from(process.env.GOOGLE_SERVICE_KEY.replace(/"/g, ""), "base64").toString().replace(/\n/g,"")
+// )
+const { client_email, private_key } = JSON.parse(secret);
+
+const authOptions = {
+  credentials: {
+    client_email,
+    private_key
+  }
+}
+
+console.log("authOptions:", authOptions);
+
+  const vertex_ai = new VertexAI({ 
+    project: "arcookingapp", 
+    location: "us-central1",
+    // apiEndpoint : "us-central1-aiplatform.googleapis.com/v1/projects/arcookingapp/locations/us-central1/publishers/google/models/gemini-pro-vision:streamGenerateContent",
+    apiEndpoint : "us-central1-aiplatform.googleapis.com",
+    googleAuthOptions: authOptions,
+  });
+console.log("vertex_ai :",vertex_ai)
+
+const credentials = {
+  client_email,
+  private_key,
+};
+
+const storageClient = new Storage({
+  projectId: "arcookingapp",
+  credentials: credentials
+ });
+const bucketName = "rarbit_livestream";
 
 const generativeVisionModel = vertex_ai.preview.getGenerativeModel({
   model: "gemini-pro-vision",
 });
 
-// Function to process checked list and return the result
 export async function checkedListAI(jsonData, frames) {
   return new Promise(async (resolve, reject) => {
-  console.log("Entering checkedListAI function");
-  console.log("frames :", frames );
-  const framesData = frames[0].data
-  console.log( "framesData :",  framesData )
+    console.log("Entering checkedListAI function");
+    console.log("jsonData:", jsonData);
+    const userCheckList = JSON.stringify(jsonData);
+    console.log("userCheckList:", userCheckList);
 
-     // Convert frames raw pixels data to base64
-     const binaryData = new Uint8Array(framesData);
-  console.log( "binaryData :",  binaryData )
+    let fileUri = "";
+    const bucket = storageClient.bucket(bucketName);
 
-
-     // Convert raw pixels to a JPEG buffer using sharp
-//  const jpegBuffer = await sharp(Buffer.from(binaryData), {
-//    raw: {
-//      width: 640, // Adjust width based on your actual frame width
-//      height: 480, // Adjust height based on your actual frame height
-//      channels: 3, // Assuming 3 channels (RGB), adjust if needed
-//    },
-//  }).jpeg({ quality: 80 }).toBuffer();
- const jpegBuffer = await sharp(Buffer.from(binaryData), {
-   raw: {
-     width: 640, // Adjust width based on your actual frame width
-     height: 480, // Adjust height based on your actual frame height
-     channels: 3, // Assuming 3 channels (RGB), adjust if needed
-   },
- }).jpeg({ quality: 80 }).toBuffer({ resolveWithObject: true, limitInputPixels: false });
-
- console.log( "jpegBuffer :",  jpegBuffer )
-
-// Save the JPEG buffer to a file
-fs.writeFileSync('output.jpg', jpegBuffer.data);
-
-console.log('JPEG image saved to output.jpg');
-
- 
- // Convert the JPEG buffer to base64
- const base64Data = jpegBuffer.toString('base64');
-//  console.log( "base64Data :",  base64Data )
- console.log("Base64 Content Length:", base64Data.length);
-  
-  try {
-    const prompt = `
-      You are an action detection AI, 
-      check if the objects and actions in the user's JSON checklist are detected in the live stream from the camera,
-      User's JSON CheckList :
-      ( only check the objects and actions marked "true", you don't need to check the objects and actions marked false )
-      ${JSON.stringify(jsonData)}
-
-      and return the new checklist below JSON format :
-      {
-        checklist: {
-          objects:{
-            "objects": true | false
-          },
-          actions:{
-            "actions": true | false
-          }
-        },
-      }
-    `;
-
-    // Convert frames to base64
-    // const base64Frames = frames.map((frame) =>
-    //   arrayBufferToBase64(frame.data.buffer)
-    // );
-
-    // Convert frames raw pixels data to base64
-    // Check if framesData is an array before attempting to map
-// if (Array.isArray(framesData)) {
-//   const base64Frames = framesData.map(frame => {
-//     const binaryData = new Uint8Array(frame.data);
-//     const base64Data = btoa(String.fromCharCode(...binaryData));
-//     return base64Data;
-//   });
-//   // Continue with the rest of your code...
-// } else {
-//   console.error("framesData is not an array");
-// }
-
- 
-
-    // const base64Data = btoa(String.fromCharCode.apply(null, binaryData));
-    // const base64Data = Buffer.from(binaryData).toString("base64");
-    // const base64Data = btoa(String.fromCharCode(...binaryData));
-
-    // Send base64-encoded frames to Vertex AI for detection
-    const filePart = {
-      file_data: {
-        file_content: base64Data, // Send frames as base64-encoded content
-        mime_type: "image/jpeg", // Adjust the mime type as needed
-        // mime_type: "application/octet-stream", // Adjust the mime type as needed
-        // file_content: framesData, // Send frames as base64-encoded content
-      },
-    };
-
-    const textPart = { text: prompt };
-    const request = {
-      contents: [{ role: "user", parts: [textPart, filePart] }],
-    };
-
-    console.log("Before generativeVisionModel.generateContentStream");
-    const streamingResp = await generativeVisionModel.generateContentStream(
-      request
-    );
-    console.log("streamingResp:", streamingResp);
-    console.log("After generativeVisionModel.generateContentStream");
-
-    const aggregatedResponse = await streamingResp.response;
-
-    console.log("After awaiting response from AI API");
-
-    // Return the generated content
-    // return aggregatedResponse.candidates[0].content;
-    resolve(aggregatedResponse.candidates[0].content);
-  } catch (error) {
-    console.error("Error in generativeVisionModel.generateContentStream:", error);
-    console.error("Error details:", error.response?.data || error.message);
-    reject(error);
-    // console.error("Error in checkedListAI function:", error);
-    // reject("Error generating content");
-
-    if (error.response && error.response.data) {
-      console.log("Error response data:", error.response.data);
-    } else {
-      console.log("Error details:", error.message);
+    // Add a delay function to pause execution for a specified time
+    function delay(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
     }
-    return "Error generating content";
-  
-  }
-})
+
+    // move the declaration of base64Data here, outside the loop
+    // let base64Data;
+
+    try {
+      if (frames.length === 0) {
+        console.error('No frames');
+      } else {
+        for (let i = 0; i < frames.length; i++) {
+          const pixels = frames[i].flat().map(value => Array.isArray(value) ? value.flat().map(Number) : Number(value));
+          const roundedPixels = pixels.map(channelValues => channelValues.map(value => Math.round(value)));
+          const flattenedPixels = roundedPixels.flat();
+          const clampedPixels = flattenedPixels.map(value => Math.max(0, Math.min(255, value)));
+          const buffer = Buffer.from(clampedPixels);
+          // console.log("buffer:", buffer);
+
+          // base64Data = buffer.toString('base64');
+          // console.log("Base64 encoded data:", base64Data);
+
+          const width = 224;
+          const height = 224;
+          const jpegBuffer = await sharp(buffer, { raw: { width, height, channels: 3 } }).toFormat('jpeg').toBuffer();
+          const destination = `received_image_${i + 1}.jpg`;
+          const file = bucket.file(destination);
+
+          await file.save(jpegBuffer, {
+            metadata: {
+              contentType: 'image/jpeg',
+            },
+          });
+
+          fileUri = `gs://${bucketName}/${destination}`;
+          console.log("fileUri inside scope :", fileUri);
+        }
+
+        // console.log("fileUri outside scope :", fileUri);
+
+        const filePart = {
+          file_data: {
+            file_uri: fileUri,
+            mime_type: "image/jpeg",
+          },
+        };
+        // const filePart = {
+        //   inline_data: {
+        //     data: base64Data,
+        //     mime_type: "image/jpeg",
+        //   },
+        // };
+
+        const prompt = `
+        You are an action detection AI, 
+        check if the objects and actions in the user's JSON checklist are detected in the live stream from the camera,
+        User's JSON CheckList :
+        ( only check the objects and actions marked "true", you don't need to check the objects and actions marked false )
+        ${userCheckList}
+
+        and return the new checklist below JSON format :
+        {
+          checklist: {
+            objects:{
+              "objects": true | false
+            },
+            actions:{
+              "actions": true | false
+            }
+          },
+        }
+      `;
+
+        const textPart = { text: prompt };
+        const request = {
+          contents: [{ role: "user", parts: [textPart, filePart] }],
+        };
+
+        console.log("Request object:", request);
+        console.log("Contents parts:", request.contents[0].parts);
+
+        console.log("Before generativeVisionModel.generateContentStream");
+
+         // Introduce a delay (e.g., 1000 milliseconds) to avoid rate limits
+         await delay(1000);
+
+        const streamingResp = await generativeVisionModel.generateContentStream(request);
+        console.log("streamingResp:", streamingResp);
+        console.log("After generativeVisionModel.generateContentStream");
+
+        const aggregatedResponse = await streamingResp.response;
+
+        console.log("After awaiting response from AI API");
+        resolve(aggregatedResponse.candidates[0].content);
+      }
+    } catch (error) {
+      console.error("Error in generativeVisionModel.generateContentStream:", error);
+      console.error("Error details:", error.response?.data || error.message);
+      reject(error);
+
+      if (error.response && error.response.data) {
+        console.log("Error response data:", error.response.data);
+      } else {
+        console.log("Error details:", error.message);
+      }
+    }
+  });
 }
 
-// Function to convert array buffer to base64
-// function arrayBufferToBase64(buffer) {
-//   let binary = "";
-//   const bytes = new Uint8Array(buffer);
-//   for (let i = 0; i < bytes.byteLength; i++) {
-//     binary += String.fromCharCode(bytes[i]);
-//   }
-//   return btoa(binary);
-// }
-
-
+async function getGoogleServiceAccountKey() {
+  const secretName = "google_service_key.json";
+  const client = new SecretsManagerClient({ region: "us-east-2" });
+  
+  try {
+    const response = await client.send(
+      new GetSecretValueCommand({
+        SecretId: secretName,
+        VersionStage: "AWSCURRENT"
+      })
+    );
+    return response.SecretString;
+  } catch (error) {
+    console.error("Error retrieving secret:", error);
+    throw error;
+  }
+}
