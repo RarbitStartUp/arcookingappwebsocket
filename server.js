@@ -2,7 +2,8 @@
 import express from "express";
 // import https from "https";
 import http from "http";
-import { WebSocketServer, WebSocket } from "ws";
+// import { WebSocketServer, WebSocket } from "ws";
+import { Server } from "socket.io";
 // import fs from "fs";
 // import cors from "cors";
 import path from "path"; // Import join from path
@@ -22,6 +23,7 @@ const app = express();
 
 // const server = https.createServer(options, app);
 const server = http.createServer(app);
+const io = new Server(server);
 const port = process.env.PORT || 3001;
 
 // Get the directory path using import.meta.url
@@ -29,12 +31,12 @@ const __filename = fileURLToPath(import.meta.url);
 const __dirname = path.dirname(__filename);
 
 // WebSocket server setup using 'ws'
-const wss = new WebSocketServer({ noServer: true });
+// const wss = new WebSocketServer({ noServer: true });
 
 // Attach the WebSocket server to the existing HTTP server
-wss.server = server;
+// wss.server = server;
 
-const clients = new Set(); // Using a Set to store connected clients
+// const clients = new Set(); // Using a Set to store connected clients
 
 // Parse URL-encoded bodies (as sent by HTML forms)
 app.use(bodyParser.urlencoded({ extended: true }));
@@ -64,10 +66,10 @@ app.post('/api/uploadVideo', async (req, res) => {
   }
 });
 
-wss.on("connection", (ws) => {
+io.on("connect", (socket) => {
 
   // Add the newly connected client to the set
-  clients.add(ws);
+  // clients.add(ws);
   // Define variables to track incoming data
   let jsonDataReceived = false;
   let framesReceived = 0;
@@ -77,7 +79,7 @@ wss.on("connection", (ws) => {
 
   console.log("WebSocket connection opened in server.js");
 
-  ws.on("message", async (message) => {
+  socket.on("message", async (message) => {
     console.log(`Received raw message: ${message}`);
 
     // Check if the message is valid JSON before parsing
@@ -86,10 +88,11 @@ wss.on("connection", (ws) => {
       // console.log("data :", data)
 
       // Handle the parsed data based on its structure
-      if (data.type === "ping") {
-        // Handle ping message
-        ws.send(JSON.stringify({ type: "pong" }));
-      } else if (data.type === "jsonData") {
+      // if (data.type === "ping") {
+      //   // Handle ping message
+      //   ws.send(JSON.stringify({ type: "pong" }));
+      // } else 
+      if (data.type === "jsonData") {
         try {
           // Handle jsonData
           console.log("Setting jsonDataReceived flag");
@@ -254,11 +257,13 @@ wss.on("connection", (ws) => {
           // Log the data being sent to the AI API endpoint
           console.log("fullChecklistString before ws send to client :", fullChecklistString);
           // Send the content to all connected WebSocket clients
-          clients.forEach((client) => {
-            if (client.readyState === WebSocket.OPEN) {
-              client.send(fullChecklistString);
-            }
-          });
+          // clients.forEach((client) => {
+          //   if (client.readyState === WebSocket.OPEN) {
+          //     client.send(fullChecklistString);
+          //   }
+          // });
+          // Send the content to all connected Socket.IO clients
+          io.emit("fullChecklistData", fullChecklistString);
           console.log("fullChecklistString already sent to client.");
 
           // Reset flags after processing
@@ -314,7 +319,7 @@ wss.on("connection", (ws) => {
     }
   });
 
-  ws.on("close", (code, reason) => {
+  socket.on("close", (code, reason) => {
     console.log(`WebSocket closed with code: ${code}, reason: ${reason}`);
   });
 
@@ -328,13 +333,13 @@ wss.on("connection", (ws) => {
   // });
 
   // Set up a periodic ping to keep the connection alive
-  const pingInterval = setInterval(() => {
-    if (ws.readyState === ws.OPEN) {
-      ws.ping();
-    } else {
-      clearInterval(pingInterval);
-    }
-  }, 30000); // Send a ping every 30 seconds
+  // const pingInterval = setInterval(() => {
+  //   if (ws.readyState === ws.OPEN) {
+  //     ws.ping();
+  //   } else {
+  //     clearInterval(pingInterval);
+  //   }
+  // }, 30000); // Send a ping every 30 seconds
 });
 
 // Serve static files from the project directory
@@ -424,26 +429,26 @@ app.use((req, res, next) => {
 //   }
 // });
 
-server.on("upgrade", (request, socket, head) => {
-  const allowedOrigins = "*"; // Allow connections from all origins
+// server.on("upgrade", (request, socket, head) => {
+//   const allowedOrigins = "*"; // Allow connections from all origins
 
-  // Allow all connections if the request doesn't have the Origin header
-  if (!request.headers.origin || request.headers.origin === "null") {
-    wss.handleUpgrade(request, socket, head, (ws) => {
-      wss.emit("connection", ws, request);
-    });
-    return;
-  }
+//   // Allow all connections if the request doesn't have the Origin header
+//   if (!request.headers.origin || request.headers.origin === "null") {
+//     wss.handleUpgrade(request, socket, head, (ws) => {
+//       wss.emit("connection", ws, request);
+//     });
+//     return;
+//   }
 
-  const origin = request.headers.origin;
+//   const origin = request.headers.origin;
 
-  if (allowedOrigins === "*" || origin.includes(allowedOrigins)) {
-    wss.handleUpgrade(request, socket, head, (ws) => {
-      wss.emit("connection", ws, request);
-    });
-    return;
-  }
-});
+//   if (allowedOrigins === "*" || origin.includes(allowedOrigins)) {
+//     wss.handleUpgrade(request, socket, head, (ws) => {
+//       wss.emit("connection", ws, request);
+//     });
+//     return;
+//   }
+// });
 
 server.listen(port, "0.0.0.0", () => {
   console.log(`Server listening at http://0.0.0.0:${port}`);

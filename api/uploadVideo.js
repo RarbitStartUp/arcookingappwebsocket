@@ -22,8 +22,8 @@ export async function uploadVideo(req, res) {
 
     // Create a credentials object
     const credentials = {
-       client_email,
-       private_key,
+      client_email,
+      private_key,
     };
     console.log("credentials:", credentials)
 
@@ -31,7 +31,7 @@ export async function uploadVideo(req, res) {
       projectId: "arcookingapp",
       credentials: credentials,
       // keyFilename: "google_service_key.json",
-     });
+    });
     console.log("storageClient:", storageClient);
 
     let totalFileSize = 0; // Initialize fileSize to zero
@@ -76,6 +76,9 @@ export async function uploadVideo(req, res) {
 
     const apiResponse = await uploadVideoAI(fileUri);
     console.log("Checkbox AI response:", apiResponse);
+
+    // Delete the uploaded video after processing
+    await file.delete();
 
     // Parse the text property to extract the JSON data
     const responseData = JSON.parse(apiResponse);
