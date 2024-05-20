@@ -1,0 +1,67 @@
+import cv from 'opencv4nodejs';
+import ffmpeg from 'fluent-ffmpeg';
+import fs from 'fs';
+import path from 'path';
+import { fileURLToPath } from 'url';
+import { Buffer } from 'buffer';
+
+// Helper to get the current directory
+const __filename = fileURLToPath(import.meta.url);
+const __dirname = path.dirname(__filename);
+
+const VIDEO_PATH = path.join(__dirname, '../data/leek.mp4');  // Adjust the path if necessary
+
+export const processVideo = async (videoPath, secondsPerFrame = 2) => {
+  const base64Frames = [];
+  const baseVideoPath = videoPath.slice(0, videoPath.lastIndexOf('.'));
+
+  const video = new cv.VideoCapture(videoPath);
+  const totalFrames = video.get(cv.CAP_PROP_FRAME_COUNT);
+  const fps = video.get(cv.CAP_PROP_FPS);
+  const framesToSkip = Math.round(fps * secondsPerFrame);
+  let currFrame = 0;
+
+  // Loop through the video and extract frames at specified sampling rate
+  while (currFrame < totalFrames - 1) {
+    video.set(cv.CAP_PROP_POS_FRAMES, currFrame);
+    const frame = video.read();
+    if (frame.empty) {
+      break;
+    }
+    const frameBuffer = cv.imencode('.jpg', frame).toString('base64');
+    base64Frames.push(frameBuffer);
+    currFrame += framesToSkip;
+  }
+
+  // Extract audio from video
+  const audioPath = `${baseVideoPath}.mp3`;
+  await new Promise((resolve, reject) => {
+    ffmpeg(videoPath)
+      .output(audioPath)
+      .audioBitrate('32k')
+      .on('end', resolve)
+      .on('error', reject)
+      .run();
+  });
+
+  console.log(`Extracted ${base64Frames.length} frames`);
+  console.log(`Extracted audio to ${audioPath}`);
+  return { base64Frames, audioPath };
+};
+
+export const uploadVideo = async (req, res) => {
+  try {
+    const { inputLink } = req.body;
+    console.log('Received input link in uploadVideo.js:', inputLink);
+
+    // For demonstration purposes, we'll use the static VIDEO_PATH
+    // In a real application, download the video from inputLink before processing
+    const { base64Frames, audioPath } = await processVideo(VIDEO_PATH, 1);
+
+    // Respond with the processed data
+    res.status(200).json({ message: 'Video processed successfully', frames: base64Frames, audio: audioPath });
+  } catch (error) {
+    console.error('Error processing video:', error);
+    res.status(500).json({ message: 'Internal Server Error' });
+  }
+};

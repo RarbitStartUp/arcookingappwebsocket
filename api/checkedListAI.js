@@ -33,71 +33,74 @@ const credentials = {
 const storageClient = new Storage({
   projectId: "arcookingapp",
   credentials: credentials
+  // keyFilename: 'google_service_key.json'
 });
 const bucketName = "rarbit_livestream";
 
 const generativeVisionModel = vertex_ai.preview.getGenerativeModel({
-  model: "gemini-pro-vision",
+  model: "gemini-1.5-pro-preview-0409",
+  // model: "gemini-1.5-pro-latest",
+  // model: "gemini-pro-vision",
 });
 
 // Define a global variable to track retry status
-let stopRetryFrames = false;
+// let stopRetryFrames = false;
 let stepIndex = 0;
 let currentStepIndex = 0; // Initialize current step index
 let retryCount = 0; // Counter for retry attempts
 const maxRetryAttempts = 1000; // Maximum number of retry attempts
 
-export async function checkedListAI(jsonData, batchFrames, stopRetryFrames) {
+export async function checkedListAI(jsonData, frameBatch) {
 
   return new Promise(async (resolve, reject) => {
 
     console.log("Entering checkedListAI function");
-
+    console.log("jsonData:", jsonData);
+    console.log("frameBatch:",frameBatch);
     // Create an empty array to store pending frames
     const pendingFrames = [];
 
     // Push the frame into the pending frames array
-    // pendingFrames.push(batchFrames); // it will only push 16 frames into 1 frame
-    pendingFrames.push(...batchFrames); // it will push 16 frames individually
+    // pendingFrames.push(frameBatch); // it will only push 16 frames into 1 frame
+    pendingFrames.push(...frameBatch); // it will push 16 frames individually
 
     // console.log("pendingFrames:", pendingFrames);
     console.log("pendingFrames Length:", pendingFrames.length);
 
     const bucket = storageClient.bucket(bucketName);
 
-    let allObjectsAndActionsDetected = false;
+    let allActionsDetected = false;
     // Declare aiResult with a default value
     let aiResult = { checklist: { objects: {}, actions: {} } };
     let resultList = { checklist: { objects: {}, actions: {} } };
     // Initialize uiResult with a deep copy of aiResult
     let uiResult = JSON.parse(JSON.stringify(aiResult));
-    let fullChecklist = { current: { timestamp: {}, checklist: {} }, next: {} };
+    let fullChecklist = {
+      stepIndex: 0, // or another appropriate default value
+      timestamp: new Date().toISOString(), // or another appropriate default value
+      actions: {} // initializing as an empty object
+    };
     // Declare a variable to store the previous fullChecklist result
     let previousFullChecklist;
     // let base64Data; // Define base64Data outside the loop
     // Define a variable to keep track of the index of the last processed frame
     let lastProcessedFrameIndex = 0;
 
-    while (pendingFrames.length > 0 && !allObjectsAndActionsDetected && stepIndex < jsonData.length && retryCount < maxRetryAttempts) {
+    while (pendingFrames.length > 0 && !allActionsDetected && stepIndex < jsonData.length && retryCount < maxRetryAttempts) {
       //   // Wait until data processing is completed
       //   await delay(1000);
       try {
         console.log(`Entering Step ${stepIndex + 1}`);
         console.log("Step index inside loop:", stepIndex);
         // Reset resultList for the next step
-        resultList = { checklist: { objects: {}, actions: {} } };
+        resultList = { checklist: { actions: {} } };
         const stepData = jsonData[stepIndex];
         const timestamp = stepData.timestamp;
         const userChecklist = (JSON.stringify(stepData) + '').replace(/`/g, '\\`');
         console.log("userChecklist:", userChecklist);
 
         console.log(`Processing Step ${stepIndex + 1} at timestamp ${timestamp}`);
-        const nextStepIndex = stepIndex + 1;
-        const nextStepData = nextStepIndex < jsonData.length ? jsonData[nextStepIndex] : null;
-        let nextUserChecklist = nextStepData ? nextStepData : { timestamp: {}, objects: {}, actions: {} };
-        console.log("nextUserChecklist :", nextUserChecklist);
 
-        let objectsDetected = false;
         let actionsDetected = false;
 
         // for (let i = 0; i < pendingFrames.length; i++) {    
@@ -109,11 +112,15 @@ export async function checkedListAI(jsonData, batchFrames, stopRetryFrames) {
           // Get the first frame from the array
           // const frame = pendingFrames.shift();
           const frame = pendingFrames[i];
-          const pixels = frame.flat().map(value => Array.isArray(value) ? value.flat().map(Number) : Number(value));
-          const roundedPixels = pixels.map(channelValues => channelValues.map(value => Math.round(value)));
-          const flattenedPixels = roundedPixels.flat();
-          const clampedPixels = flattenedPixels.map(value => Math.max(0, Math.min(255, value)));
-          const buffer = Buffer.from(clampedPixels);
+          console.log("frame in pendingFrames[i]:",frame);
+          // frame already contained the pixels in rgb unit8
+
+          // const pixels = frame.flat().map(value => Array.isArray(value) ? value.flat().map(Number) : Number(value));
+          // const roundedPixels = pixels.map(channelValues => channelValues.map(value => Math.round(value)));
+          // const flattenedPixels = roundedPixels.flat();
+          // const clampedPixels = flattenedPixels.map(value => Math.max(0, Math.min(255, value)));
+          // const buffer = Buffer.from(clampedPixels);
+
           // console.log("Pixels:", pixels);
           // console.log("Rounded Pixels:", roundedPixels);
           // console.log("Flattened Pixels:", flattenedPixels);
@@ -123,9 +130,11 @@ export async function checkedListAI(jsonData, batchFrames, stopRetryFrames) {
           // base64Data = buffer.toString('base64');
           // console.log("Base64 encoded data:", base64Data);
 
-          const width = 224;
-          const height = 224;
-          const jpegBuffer = await sharp(buffer, { raw: { width, height, channels: 3 } }).toFormat('jpeg').toBuffer();
+          // const width = 224;
+          // const height = 224;
+          const width = 192;
+          const height = 192;
+          const jpegBuffer = await sharp(Buffer.from(frame), { raw: { width, height, channels: 3 } }).toFormat('jpeg').toBuffer();
           // const destination = `received_image_${i + 1}.jpg`;
           const createTime = Date.now(); // Get the current timestamp
           const destination = `received_image_${createTime}.jpg`; // Use the timestamp in the filename
@@ -160,22 +169,19 @@ export async function checkedListAI(jsonData, batchFrames, stopRetryFrames) {
 
           const prompt = `
           You are an action detection AI, 
-          check if the objects and actions in the user's JSON checklist are detected in the live stream from the camera,
+          check if the actions in the user's JSON checklist are detected in the live stream from the camera,
           User's JSON Checklist: ${userChecklist},
-          only check the objects and actions marked "true", you don't need to check the objects and actions marked false,
+          only check the actions marked "true", you don't need to check the actions marked false,
 
           Generate a JSON response that includes a checklist.
-          The objects and actions should be represented as boolean values. 
+          The actions should be represented as boolean values. 
 
-          Ensure that the total response token count does not exceed 4096 tokens to prevent truncation of the response, maintaining its integrity.
+          Ensure that the total response token count does not exceed 8192 tokens to prevent truncation of the response, maintaining its integrity.
           Trim away any markup or formatting, provide only plain text response without JSON markup but in JSON format for API.
 
           Example:
           {
               "checklist": {
-                  "objects": {
-                      "objects": true | false
-                  },
                   "actions": {
                       "actions": true | false
                   }
@@ -274,7 +280,7 @@ export async function checkedListAI(jsonData, batchFrames, stopRetryFrames) {
               console.log("aiResult currentStepIndex:", currentStepIndex);
 
               // Check if JSON format is valid
-              if (aiResult.checklist.objects && aiResult.checklist.actions) {
+              if (aiResult.checklist.actions) {
                 console.log(`Step ${stepIndex + 1} detected successfully`);
                 //   resolve(aiResult);
               } else {
@@ -308,12 +314,12 @@ export async function checkedListAI(jsonData, batchFrames, stopRetryFrames) {
               console.log("uiResult checklist after-stepIndex:", stepIndex);
               console.log("uiResult checklist after-currentStepIndex:", currentStepIndex);
 
-              fullChecklist = { current: { stepIndex: stepIndex, timestamp, checklist: uiResult.checklist }, next: nextUserChecklist };
+              fullChecklist = { stepIndex, timestamp, actions:uiResult.checklist.actions };
               console.log("fullChecklist after define:", fullChecklist);
               console.log("fullChecklist stepIndex:", stepIndex);
               console.log("fullChecklist currentStepIndex:", currentStepIndex);
 
-              const allItemsAreTrue = allObjectsAndActionsAreTrue(uiResult);
+              const allItemsAreTrue = allActionsAreTrue(uiResult);
               console.log("allItemsAreTrue before if() :", allItemsAreTrue);
 
               if (stepIndex < currentStepIndex) {
@@ -330,7 +336,7 @@ export async function checkedListAI(jsonData, batchFrames, stopRetryFrames) {
                 console.log("stepIndex when all True:", stepIndex);
                 // currentStepIndex = stepIndex; // Update currentStepIndex
                 console.log(`Step ${stepIndex + 1} completed successfully`);
-                allObjectsAndActionsDetected = true;
+                allActionsDetected = true;
                 // Increment stepIndex to move to the next step
                 // stepIndex++;
                 if (stepIndex < jsonData.length - 1) {
@@ -384,15 +390,8 @@ function storeResult(aiResult, resultList) {
   }
 }
 
-function allObjectsAndActionsAreTrue(uiResult) {
-  const { objects, actions } = uiResult.checklist;
-
-  // Check if all objects are true
-  for (const item in objects) {
-    if (!objects[item]) {
-      return false;
-    }
-  }
+function allActionsAreTrue(uiResult) {
+  const { actions } = uiResult.checklist;
 
   // Check if all actions are true
   for (const item in actions) {
@@ -412,17 +411,17 @@ async function retryWithExponentialBackoff(operation, maxAttempts, baseDelay) {
 
   while (retryCount < maxAttempts) {
     try {
-      if (stopRetryFrames && retryCount > 0) {
-        throw new Error('Retry halted by user'); // Throw custom error to exit retry loop
-      }
+      // if (stopRetryFrames && retryCount > 0) {
+      //   throw new Error('Retry halted by user'); // Throw custom error to exit retry loop
+      // }
       return await operation();
     } catch (error) {
       console.error("Caught error:", error); // Log the entire error object
       console.log("error.stack:", error.stack); // Print stack trace
-      if (stopRetryFrames) {
-        console.log('Retry halted by user. Exiting retry loop.');
-        break; // Exit the retry loop if retry is halted by the user
-      }
+      // if (stopRetryFrames) {
+      //   console.log('Retry halted by user. Exiting retry loop.');
+      //   break; // Exit the retry loop if retry is halted by the user
+      // }
       if (error.response && error.response.status === 429) {
         console.log("Received HTTP 429 - Too Many Requests. Retrying after delay...");
         await delay(delay); // Delay before next retry

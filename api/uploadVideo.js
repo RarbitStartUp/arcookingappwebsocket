@@ -5,7 +5,7 @@ import { getGoogleServiceAccountKey } from "../lib/getGoogleServiceAccountKey.js
 
 export async function uploadVideo(req, res) {
   try {
-    console.log("inputlink in uploadVideoGS.js :", req.body);
+    console.log("inputlink in uploadVideo.js :", req.body);
 
     const { inputLink } = req.body;
 
